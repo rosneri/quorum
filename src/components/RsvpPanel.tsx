@@ -74,18 +74,32 @@ export function RsvpPanel({
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <SubmitButton ref={inRef} name="state" value="IN" className="btn flex-1 px-2">
+        <SubmitButton
+          ref={inRef}
+          name="state"
+          value="IN"
+          className="btn flex-1 px-2"
+          data-rsvp="in"
+          data-on={myState === "IN"}
+        >
           {myState === "IN" ? t("youreIn") : t("imIn")}
         </SubmitButton>
         <SubmitButton
           name="state"
           value="MAYBE"
           className="btn btn-quiet flex-1 px-2"
+          data-rsvp="maybe"
           data-on={myState === "MAYBE"}
         >
           {myState === "MAYBE" ? t("youreMaybe") : t("maybe")}
         </SubmitButton>
-        <SubmitButton name="state" value="OUT" className="btn btn-quiet flex-1 px-2">
+        <SubmitButton
+          name="state"
+          value="OUT"
+          className="btn btn-quiet flex-1 px-2"
+          data-rsvp="out"
+          data-on={myState === "OUT"}
+        >
           {myState === "OUT" ? t("youreOut") : t("cantMakeIt")}
         </SubmitButton>
       </div>

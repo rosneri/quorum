@@ -236,6 +236,38 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 </div>
               );
             })}
+            {/* ranges people offered — sit with the options as a hint to add a
+                time that lands inside them */}
+            {event.availabilities.length > 0 && showList && (
+              <div className="flex flex-col gap-1 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
+                <span className="label">{t("freeWhen")}</span>
+                {event.availabilities.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-semibold">
+                      {nameById.get(a.userId)}
+                      {a.userId === user?.id ? ` (${t("you")})` : ""}
+                    </span>
+                    <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
+                      <When iso={a.from.toISOString()} />
+                      {a.until && (
+                        <>
+                          {" – "}
+                          <TimeOnly iso={a.until.toISOString()} />
+                        </>
+                      )}
+                      {a.userId === user?.id && (
+                        <form action={removeAvailability} className="inline-flex">
+                          <input type="hidden" name="id" value={a.id} />
+                          <SubmitButton aria-label="✕" className="inline-flex items-center font-bold" style={{ color: "var(--color-accent-3)" }}>
+                            ✕
+                          </SubmitButton>
+                        </form>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* one more "option": none of these work — suggest your own time */}
             {user && <AvailabilityPanel eventId={event.id} known={!!user} />}
           </div>
@@ -250,37 +282,6 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 myMin={mine?.personalMin ?? 0}
                 lastOneIn={false}
               />
-            </div>
-          )}
-
-          {event.availabilities.length > 0 && showList && (
-            <div className="flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <span className="label">{t("freeWhen")}</span>
-              {event.availabilities.map((a) => (
-                <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="font-semibold">
-                    {nameById.get(a.userId)}
-                    {a.userId === user?.id ? ` (${t("you")})` : ""}
-                  </span>
-                  <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
-                    <When iso={a.from.toISOString()} />
-                    {a.until && (
-                      <>
-                        {" – "}
-                        <TimeOnly iso={a.until.toISOString()} />
-                      </>
-                    )}
-                    {a.userId === user?.id && (
-                      <form action={removeAvailability} className="inline-flex">
-                        <input type="hidden" name="id" value={a.id} />
-                        <SubmitButton aria-label="✕" className="inline-flex items-center font-bold" style={{ color: "var(--color-accent-3)" }}>
-                          ✕
-                        </SubmitButton>
-                      </form>
-                    )}
-                  </span>
-                </div>
-              ))}
             </div>
           )}
         </div>

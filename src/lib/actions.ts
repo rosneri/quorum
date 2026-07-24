@@ -239,10 +239,31 @@ export async function addAvailability(formData: FormData) {
   let until: Date | null = untilRaw ? new Date(untilRaw) : null;
   if (until && (isNaN(until.getTime()) || until.getTime() <= from.getTime())) until = null;
 
-  const count = await prisma.availability.count({ where: { eventId, userId } });
-  if (count >= 10) return;
-
-  await prisma.availability.create({ data: { eventId, userId, from, until } });
+  if (!until) {
+    // A specific time becomes a candidate option — their suggestion, voted for
+    // them (turning a fixed plan into a vote if it was single-time).
+    if (from.getTime() < Date.now() - 15 * 60_000) return;
+    if ((await prisma.pollOption.count({ where: { eventId } })) >= 12) return;
+    const option =
+      (await prisma.pollOption.findFirst({ where: { eventId, startsAt: from } })) ??
+      (await prisma.pollOption.create({ data: { eventId, startsAt: from } }));
+    await prisma.rsvp.upsert({
+      where: { eventId_userId: { eventId, userId } },
+      create: { eventId, userId, state: "IN" },
+      update: {},
+    });
+    await prisma.pollVote.upsert({
+      where: { optionId_userId: { optionId: option.id, userId } },
+      create: { optionId: option.id, userId },
+      update: {},
+    });
+  } else {
+    // A range stays a window shown near the options, so others can add a time
+    // that lands inside it.
+    if ((await prisma.availability.count({ where: { eventId, userId } })) >= 10) return;
+    await prisma.availability.create({ data: { eventId, userId, from, until } });
+  }
+  await syncEventStatus(eventId);
   revalidatePath(`/e/${event.inviteToken}`);
 }
 
