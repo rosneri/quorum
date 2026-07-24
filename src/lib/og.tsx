@@ -12,6 +12,33 @@ const ACCENT = "#ffe08a";
 
 type Pill = { label: string; tone?: "mint" | "accent" | "quiet" };
 
+// Characters that read left-to-right (Latin, digits, and the punctuation that
+// travels with a name, time or URL).
+const LTR_RUN = /[A-Za-z0-9@._:/+-]/;
+
+/**
+ * Satori (next/og) doesn't run the Unicode bidi algorithm, so right-to-left
+ * text is drawn in logical order and comes out reversed. Reorder it to visual
+ * order ourselves: reverse the whole string, then flip each maximal LTR run
+ * (a name, time, etc.) back to its natural direction. Good enough for our mix
+ * of Hebrew with the odd Latin name or number; Latin-only text is unchanged.
+ */
+function toVisualRtl(text: string): string {
+  const chars = [...text].reverse();
+  for (let i = 0; i < chars.length; ) {
+    if (!LTR_RUN.test(chars[i])) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < chars.length && LTR_RUN.test(chars[j])) j++;
+    const run = chars.slice(i, j).reverse();
+    for (let k = i; k < j; k++) chars[k] = run[k - i];
+    i = j;
+  }
+  return chars.join("");
+}
+
 /**
  * Renders a branded card: a big emoji + title, a muted subtitle line, and an
  * optional status pill. Used by the app, event, and group OG routes.
@@ -30,6 +57,8 @@ export function ogCard({
   dir?: "ltr" | "rtl";
 }) {
   const pillBg = pill?.tone === "accent" ? ACCENT : pill?.tone === "quiet" ? "#ece7db" : MINT;
+  // Reorder RTL text to visual order since Satori won't (see toVisualRtl).
+  const show = dir === "rtl" ? toVisualRtl : (s: string) => s;
   return new ImageResponse(
     (
       <div
@@ -59,7 +88,7 @@ export function ogCard({
                 fontWeight: 700,
               }}
             >
-              {pill.label}
+              {show(pill.label)}
             </div>
           )}
         </div>
@@ -78,11 +107,11 @@ export function ogCard({
               display: "flex",
             }}
           >
-            {title}
+            {show(title)}
           </div>
           {subtitle && (
             <div style={{ fontSize: 42, fontWeight: 500, color: INK_2, display: "flex" }}>
-              {subtitle}
+              {show(subtitle)}
             </div>
           )}
         </div>
