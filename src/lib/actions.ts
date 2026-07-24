@@ -246,7 +246,7 @@ export async function addAvailability(formData: FormData) {
     if ((await prisma.pollOption.count({ where: { eventId } })) >= 12) return;
     const option =
       (await prisma.pollOption.findFirst({ where: { eventId, startsAt: from } })) ??
-      (await prisma.pollOption.create({ data: { eventId, startsAt: from } }));
+      (await prisma.pollOption.create({ data: { eventId, startsAt: from, suggested: true } }));
     await prisma.rsvp.upsert({
       where: { eventId_userId: { eventId, userId } },
       create: { eventId, userId, state: "IN" },
@@ -306,6 +306,17 @@ export async function editEvent(formData: FormData) {
     if (toAdd.length) {
       await prisma.pollOption.createMany({
         data: toAdd.map((d) => ({ eventId, startsAt: d })),
+      });
+    }
+    // Owner kept these times, so any participant suggestion among them is now
+    // confirmed — drop the "?".
+    const confirmIds = event.pollOptions
+      .filter((o) => o.suggested && wantedMs.has(o.startsAt.getTime()))
+      .map((o) => o.id);
+    if (confirmIds.length) {
+      await prisma.pollOption.updateMany({
+        where: { id: { in: confirmIds } },
+        data: { suggested: false },
       });
     }
   }

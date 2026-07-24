@@ -246,6 +246,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     >
                       <span className="flex min-w-0 items-center gap-1.5">
                         {isLeader && <span aria-hidden>🏆</span>}
+                        {o.suggested && <span title={t("suggestedTime")}>❓</span>}
                         <When iso={o.startsAt.toISOString()} />
                       </span>
                       <span className="font-bold">
