@@ -3,7 +3,7 @@ import { isLive, isPast, PAST_GRACE_MS } from "./eventTime";
 
 const MIN = 60_000;
 const now = Date.UTC(2026, 0, 1, 12, 0, 0);
-const at = (msFromNow: number) => ({ isPoll: false, startsAt: new Date(now + msFromNow), flexMinutes: 0 as number | null });
+const at = (msFromNow: number) => ({ startsAt: new Date(now + msFromNow), flexMinutes: 0 as number | null });
 
 describe("isLive / isPast", () => {
   it("a future plan is neither live nor past", () => {
@@ -31,13 +31,13 @@ describe("isLive / isPast", () => {
 
   it("flex extends the live window before it ages out", () => {
     const start = -(PAST_GRACE_MS + 30 * MIN); // grace already elapsed...
-    const e = { isPoll: false, startsAt: new Date(now + start), flexMinutes: 60 }; // ...but +60 flex keeps it live
+    const e = { startsAt: new Date(now + start), flexMinutes: 60 }; // ...but +60 flex keeps it live
     expect(isLive(e, now)).toBe(true);
     expect(isPast(e, now)).toBe(false);
   });
 
-  it("polls and timeless plans are never live or past", () => {
-    const poll = { isPoll: true, startsAt: null, flexMinutes: null };
+  it("undecided (timeless) plans are never live or past", () => {
+    const poll = { startsAt: null, flexMinutes: null };
     expect(isLive(poll, now)).toBe(false);
     expect(isPast(poll, now)).toBe(false);
   });

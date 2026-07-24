@@ -2,13 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { resolveQuorum } from "@/lib/quorum";
-import { vote, lockOption, onboard } from "@/lib/actions";
+import { resolveEvent } from "@/lib/quorum";
+import { isAvailableAt } from "@/lib/availability";
+import { vote, onboard } from "@/lib/actions";
 import { CancelButton } from "@/components/CancelButton";
 import { AvailabilityPanel } from "@/components/AvailabilityPanel";
-import { LockCustom } from "@/components/LockCustom";
 import { AddToCalendar } from "@/components/AddToCalendar";
-import { availableUserIds } from "@/lib/availability";
 import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
 import { When, TimeOnly } from "@/components/When";
@@ -42,8 +41,8 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   ]);
   if (!event) notFound();
 
-  const q = resolveQuorum(event.rsvps);
   const mine = user ? event.rsvps.find((r) => r.userId === user.id) : undefined;
+
   if (event.status === "CANCELLED") {
     return (
       <main className="flex min-h-[75dvh] flex-col items-center justify-center gap-5 text-center">
@@ -76,18 +75,26 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
     );
   }
 
+  // Resolve the unified event: per-time attendance + the current live leader.
+  const votes = event.pollOptions.flatMap((o) => o.votes.map((v) => ({ optionId: o.id, userId: v.userId })));
+  const res = resolveEvent(event.pollOptions, votes, event.rsvps, event.availabilities, isAvailableAt);
+  const leaderRes = res.leaderOptionId ? res.perOption.get(res.leaderOptionId) : undefined;
+  const attendingCount = leaderRes?.attending.length ?? 0;
+  const attendingSet = new Set(leaderRes?.attending ?? []);
+
   const isCreator = user?.id === event.creatorId;
-  // Names are revealed only when the organizer allows it AND the viewer is
-  // signed in with an account (the organizer always sees them).
-  const signedIn = !!user?.authId;
-  const revealNames = isCreator || (event.publicVotes && signedIn);
+  const multi = event.pollOptions.length > 1;
   const past = isPast(event);
   const live = isLive(event);
   const wasEdited = !!event.editedAt && event.editedAt.getTime() > event.createdAt.getTime();
-  const attendingSet = new Set(q.attending);
-  const wasPoll = !event.isPoll && event.pollOptions.length > 0;
-  const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
+  const decidedByVote = multi && res.confirmed && !!event.startsAt;
+
   const nameById = new Map(event.availabilities.map((a) => [a.userId, a.user.name]));
+  const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
+  // Names are revealed only when the organizer allows it AND the viewer is
+  // signed in with an account (the organizer always sees them).
+  const signedIn = !!user?.authId;
+  const showList = isCreator || !event.rsvps.length || (event.publicVotes && signedIn);
 
   return (
     <main className="flex flex-col gap-6">
@@ -105,7 +112,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           <h1 className="text-3xl font-extrabold tracking-tight">
             {event.emoji ? `${event.emoji} ` : ""}{event.title}
           </h1>
-          {!event.isPoll && event.startsAt && (
+          {event.startsAt && (
             <AddToCalendar
               token={event.inviteToken}
               title={`${event.emoji ? event.emoji + " " : ""}${event.title}`}
@@ -114,27 +121,21 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           )}
         </div>
         <p className="text-base" style={{ color: "var(--color-ink-2)" }}>
-          {event.isPoll ? (
-            t("voteOnTimeBelow")
-          ) : event.startsAt ? (
+          {event.startsAt ? (
             <When iso={event.startsAt.toISOString()} flexMinutes={event.flexMinutes} />
-          ) : null}
+          ) : (
+            t("voteOnTimeBelow")
+          )}
           {event.group ? ` · ${event.group.name}` : ""} · {t("by", { name: event.creator.name })}
         </p>
         <div className="flex flex-wrap gap-2">
-          {wasPoll && event.startsAt && (
-            <span
-              className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
-              style={{ background: "var(--color-accent-2)" }}
-            >
+          {decidedByVote && (
+            <span className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in" style={{ background: "var(--color-accent-2)" }}>
               {t("decidedByVote")}
             </span>
           )}
           {wasEdited && !past && (
-            <span
-              className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
-              style={{ background: "var(--color-accent-2)" }}
-            >
+            <span className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in" style={{ background: "var(--color-accent-2)" }}>
               {t("timeUpdated")}
             </span>
           )}
@@ -147,7 +148,6 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>{t("happeningBlurb")}</p>
         </div>
       )}
-
       {past && (
         <div className="card flex flex-col gap-1 p-5">
           <span className="text-lg font-bold">🌙 {t("behindUs")}</span>
@@ -155,11 +155,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {!event.isPoll && !past && (
+      {/* Single fixed time → classic conditional RSVP */}
+      {!multi && !past && (
         <div className="card flex flex-col gap-4 p-5">
           <QuorumMeter
-            attending={q.attending.length}
-            confirmed={q.confirmed}
+            attending={attendingCount}
+            confirmed={res.confirmed}
             soloMaybe={mine?.state === "MAYBE" && event.rsvps.length === 1}
           />
           <RsvpPanel
@@ -175,131 +176,133 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {event.isPoll && !past && (
-        <div className="card flex flex-col gap-3 p-5">
-          <span className="label">{t("whenWorks")}</span>
-          {!event.publicVotes && (
-            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
-          )}
-          {event.publicVotes && !revealNames && (
-            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-              {t("signInToSeeNames")}{" "}
-              <Link
-                href={`/account?next=/e/${event.inviteToken}`}
-                className="font-bold"
-                style={{ color: "var(--color-accent-2)" }}
-              >
-                {t("signInToSeeNamesCta")}
-              </Link>
-            </p>
-          )}
-          {!user && (
-            <form action={onboard} className="flex flex-col gap-3">
-              <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
-              <NameField known={false} />
-              <SubmitButton className="btn self-start text-sm">{t("saveNameVote")}</SubmitButton>
-            </form>
-          )}
-          {event.pollOptions.map((o) => {
-            const votedByMe = user ? o.votes.some((v) => v.userId === user.id) : false;
-            const top = Math.max(1, ...event.pollOptions.map((p) => p.votes.length));
-            const freeHere = availableUserIds(event.availabilities, o.startsAt);
-            return (
-              <div key={o.id} className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <form action={vote} className="min-w-0 flex-1">
+      {/* Several candidate times → pick the ones that work; the winner decides itself */}
+      {multi && !past && (
+        <div className="card flex flex-col gap-4 p-5">
+          <QuorumMeter attending={attendingCount} confirmed={res.confirmed} />
+          <div className="flex flex-col gap-3">
+            <span className="label">{t("whenWorks")}</span>
+            {!event.publicVotes && (
+              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
+            )}
+            {event.publicVotes && !showList && (
+              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+                {t("signInToSeeNames")}{" "}
+                <Link
+                  href={`/account?next=/e/${event.inviteToken}`}
+                  className="font-bold"
+                  style={{ color: "var(--color-accent-2)" }}
+                >
+                  {t("signInToSeeNamesCta")}
+                </Link>
+              </p>
+            )}
+            {!user && (
+              <form action={onboard} className="flex flex-col gap-3">
+                <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
+                <NameField known={false} />
+                <SubmitButton className="btn self-start text-sm">{t("saveNameVote")}</SubmitButton>
+              </form>
+            )}
+            {event.pollOptions.map((o) => {
+              const votedByMe = user ? o.votes.some((v) => v.userId === user.id) : false;
+              const optRes = res.perOption.get(o.id);
+              const isLeader = o.id === res.leaderOptionId;
+              const freeHere = optRes?.free.length ?? 0;
+              const top = Math.max(1, ...event.pollOptions.map((p) => p.votes.length));
+              return (
+                <div key={o.id} className="flex flex-col gap-1">
+                  <form action={vote}>
                     <input type="hidden" name="optionId" value={o.id} />
                     <SubmitButton
                       className="chip w-full items-center justify-between text-left"
                       data-on={votedByMe}
+                      data-leader={isLeader || undefined}
                       disabled={!user}
                       style={{ display: "flex", opacity: user ? 1 : 0.6 }}
                     >
-                      <When iso={o.startsAt.toISOString()} />
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        {isLeader && <span aria-hidden>🏆</span>}
+                        <When iso={o.startsAt.toISOString()} />
+                      </span>
                       <span className="font-bold">
                         {o.votes.length} ✋
-                        {freeHere.length > 0 && (
-                          <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere.length })}</span>
+                        {freeHere > 0 && (
+                          <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere })}</span>
                         )}
                       </span>
                     </SubmitButton>
                   </form>
-                  {isCreator && (
-                    <form action={lockOption} className="shrink-0">
-                      <input type="hidden" name="optionId" value={o.id} />
-                      <SubmitButton className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</SubmitButton>
-                    </form>
+                  {o.votes.length > 0 && (
+                    <div
+                      className="h-1.5 rounded-full"
+                      style={{
+                        background: isLeader ? "var(--color-mint)" : "var(--color-accent-2)",
+                        width: `${(o.votes.length / top) * 100}%`,
+                        transition: "width 220ms var(--ease-out)",
+                      }}
+                    />
+                  )}
+                  {showList && o.votes.length > 0 && (
+                    <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+                      {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
+                    </span>
                   )}
                 </div>
-                {o.votes.length > 0 && (
-                  <div
-                    className="h-1.5 rounded-full"
-                    style={{
-                      background: "var(--color-accent-2)",
-                      width: `${(o.votes.length / top) * 100}%`,
-                      transition: "width 220ms var(--ease-out)",
-                    }}
-                  />
-                )}
-                {revealNames && o.votes.length > 0 && (
-                  <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                    {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
-                  </span>
-                )}
+              );
+            })}
+            {/* ranges people offered — sit with the options as a hint to add a
+                time that lands inside them */}
+            {event.availabilities.length > 0 && showList && (
+              <div className="flex flex-col gap-1 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
+                <span className="label">{t("freeWhen")}</span>
+                {event.availabilities.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-semibold">
+                      {nameById.get(a.userId)}
+                      {a.userId === user?.id ? ` (${t("you")})` : ""}
+                    </span>
+                    <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
+                      <When iso={a.from.toISOString()} />
+                      {a.until && (
+                        <>
+                          {" – "}
+                          <TimeOnly iso={a.until.toISOString()} />
+                        </>
+                      )}
+                      {a.userId === user?.id && (
+                        <form action={removeAvailability} className="inline-flex">
+                          <input type="hidden" name="id" value={a.id} />
+                          <SubmitButton aria-label="✕" className="inline-flex items-center font-bold" style={{ color: "var(--color-accent-3)" }}>
+                            ✕
+                          </SubmitButton>
+                        </form>
+                      )}
+                    </span>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-          {event.availabilities.length > 0 && revealNames && (
-            <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <span className="label">{t("freeWhen")}</span>
-              {event.availabilities.map((a) => (
-                <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="font-semibold">
-                    {nameById.get(a.userId)}
-                    {a.userId === user?.id ? ` (${t("you")})` : ""}
-                  </span>
-                  <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
-                    <When iso={a.from.toISOString()} />
-                    {a.until && (
-                      <>
-                        {" – "}
-                        <TimeOnly iso={a.until.toISOString()} />
-                      </>
-                    )}
-                    {a.userId === user?.id && (
-                      <form action={removeAvailability} className="inline-flex">
-                        <input type="hidden" name="id" value={a.id} />
-                        <SubmitButton
-                          aria-label="✕"
-                          className="inline-flex items-center font-bold"
-                          style={{ color: "var(--color-accent-3)" }}
-                        >
-                          ✕
-                        </SubmitButton>
-                      </form>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+            )}
+            {/* one more "option": none of these work — suggest your own time */}
+            {user && <AvailabilityPanel eventId={event.id} known={!!user} />}
+          </div>
+
+          {/* conditional participation — your picks only count once a time clears your threshold */}
           {user && (
-            <div className="border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-<AvailabilityPanel eventId={event.id} known={!!user} />
+            <div className="border-t pt-4" style={{ borderColor: "var(--color-paper-3)" }}>
+              <RsvpPanel
+                eventId={event.id}
+                known={!!user}
+                myState={mine?.state ?? null}
+                myMin={mine?.personalMin ?? 0}
+                lastOneIn={false}
+              />
             </div>
-          )}
-          {isCreator && (
-            <>
-              <LockCustom eventId={event.id} />
-              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                {t("creatorHint")}
-              </p>
-            </>
           )}
         </div>
       )}
 
-      {!event.isPoll && event.rsvps.length > 0 && !revealNames && (
+      {event.rsvps.length > 0 && !showList && (
         <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
           {event.publicVotes ? (
             <>
@@ -317,7 +320,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           )}
         </p>
       )}
-      {!event.isPoll && event.rsvps.length > 0 && revealNames && (
+      {event.rsvps.length > 0 && showList && (
         <section className="flex flex-col gap-2">
           <h2 className="label">{t("whosIn")}</h2>
           <div className="flex flex-col gap-1.5">
@@ -334,10 +337,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     {attending
                       ? t("rIn")
                       : waiting
-                        ? t("waitingFor", { n: r.personalMin })
+                        ? multi ? t("rMaybe") : t("waitingFor", { n: r.personalMin })
                         : r.state === "MAYBE"
                           ? `${t("rMaybe")} 🤔`
-                          : t("rOut")}
+                          : r.state === "OUT"
+                            ? t("rOut")
+                            : t("rMaybe")}
                   </span>
                 </div>
               );
@@ -349,11 +354,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       <div className="flex items-center gap-3">
         <ShareButton path={`/e/${event.inviteToken}`} title={event.title} />
         {isCreator && !past && (
-          <Link
-            href={`/e/${event.inviteToken}/edit`}
-            className="text-sm font-semibold"
-            style={{ color: "var(--color-ink-2)" }}
-          >
+          <Link href={`/e/${event.inviteToken}/edit`} className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>
             {t("editPlan")}
           </Link>
         )}

@@ -98,6 +98,11 @@ body {
 .btn-mint:hover { box-shadow: 0 6px 0 0 var(--color-mint-deep); }
 .btn-mint:active { box-shadow: 0 1px 0 0 var(--color-mint-deep); }
 
+/* Chosen RSVP status carries its own active color (not just a ✓). */
+.btn[data-rsvp="in"][data-on="true"] { background: var(--color-mint); box-shadow: 0 4px 0 0 var(--color-mint-deep); }
+.btn[data-rsvp="maybe"][data-on="true"] { background: var(--color-accent); box-shadow: 0 4px 0 0 var(--color-accent-deep); }
+.btn[data-rsvp="out"][data-on="true"] { background: var(--color-accent-3); box-shadow: 0 4px 0 0 oklch(55% 0.2 18); color: var(--color-paper); }
+
 /* ---- Card ---- */
 .card {
   background: oklch(99% 0.008 95);

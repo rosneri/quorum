@@ -28,7 +28,7 @@ const en = {
   // new plan
   newPlanTitle: "New plan",
   whatsThePlan: "What's the plan?",
-  titlePlaceholder: "Coffee at Nira's",
+  titlePlaceholder: "Coffee",
   whoInvited: "Who's invited?",
   anyoneWithLink: "Anyone with the link",
   whenQ: "When?",
@@ -48,6 +48,9 @@ const en = {
   pollHint: "Pick a day, then tap every time that could work — you can mix days.",
   chosenTimes: "Chosen times",
   customDate: "Pick a date…",
+  customEmoji: "Any emoji",
+  whenPickHint: "Add one time for a fixed plan, or several to let people pick — the winner decides itself.",
+  pickOneTime: "Pick at least one time.",
 
   // account
   account: "Account",
@@ -102,6 +105,7 @@ const en = {
   nFree: "{n} free",
   freeWhen: "Free when",
   orSayFree: "Or say when you're free",
+  suggestTime: "None of these work — suggest a time",
   clear: "Clear",
   specificTime: "Specific time",
   timeRange: "Time range",
@@ -212,7 +216,7 @@ const he: Dict = {
 
   newPlanTitle: "תוכנית חדשה",
   whatsThePlan: "מה התוכנית?",
-  titlePlaceholder: "קפה אצל נירה",
+  titlePlaceholder: "קפה",
   whoInvited: "מי מוזמנים?",
   anyoneWithLink: "כל מי שיש לו את הקישור",
   whenQ: "מתי?",
@@ -232,6 +236,9 @@ const he: Dict = {
   pollHint: "בוחרים יום ומסמנים כל שעה שיכולה להתאים — אפשר לשלב ימים.",
   chosenTimes: "השעות שנבחרו",
   customDate: "תאריך אחר…",
+  customEmoji: "אימוג'י אחר",
+  whenPickHint: "הוסיפו שעה אחת לתוכנית קבועה, או כמה כדי שיצביעו — המנצחת נסגרת לבד.",
+  pickOneTime: "בחרו לפחות שעה אחת.",
 
   account: "חשבון",
   accountTitle: "החשבון שלך",
@@ -283,6 +290,7 @@ const he: Dict = {
   nFree: "{n} פנויים",
   freeWhen: "פנויים מתי",
   orSayFree: "או ספרו מתי אתם פנויים",
+  suggestTime: "אף אחת לא מתאימה — הציעו שעה",
   clear: "ניקוי",
   specificTime: "שעה מסוימת",
   timeRange: "טווח שעות",

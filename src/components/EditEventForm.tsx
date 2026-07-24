@@ -1,27 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { editEvent } from "@/lib/actions";
 import { useI18n } from "./I18nProvider";
 import { SubmitButton } from "./SubmitButton";
-import { EmojiPicker, TimePicker, toLocalInputValue } from "./EventFormBits";
+import { EmojiPicker, FlexSlider, TimeMultiPicker, toLocalInputValue } from "./EventFormBits";
 
 export function EditEventForm({
   eventId,
   title,
   emoji,
-  isPoll,
-  startsAtIso,
+  optionIsos,
   flexMinutes,
 }: {
   eventId: string;
   title: string;
   emoji: string | null;
-  isPoll: boolean;
-  startsAtIso: string | null;
+  optionIsos: string[];
   flexMinutes: number | null;
 }) {
   const { t } = useI18n();
-  const initialWhen = startsAtIso ? toLocalInputValue(new Date(startsAtIso)) : undefined;
+  const [count, setCount] = useState(optionIsos.length);
+  const initial = optionIsos.map((iso) => toLocalInputValue(new Date(iso)));
 
   return (
     <form action={editEvent} className="flex flex-col gap-5">
@@ -32,7 +32,6 @@ export function EditEventForm({
         <input
           id="title"
           name="title"
-          required
           maxLength={80}
           defaultValue={title}
           placeholder={t("titlePlaceholder")}
@@ -41,10 +40,17 @@ export function EditEventForm({
         <EmojiPicker initial={emoji} />
       </div>
 
-      {/* Poll plans aren't time-editable until a time is locked in. */}
-      {!isPoll && <TimePicker initialWhen={initialWhen} initialFlex={flexMinutes ?? 30} />}
+      <div className="flex flex-col gap-2">
+        <span className="label">{t("whenQ")}</span>
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whenPickHint")}</p>
+        <TimeMultiPicker initial={initial} onCountChange={setCount} />
+        <FlexSlider initial={flexMinutes ?? 30} />
+      </div>
 
-      <SubmitButton className="btn text-lg">{t("saveChanges")}</SubmitButton>
+      {count === 0 && (
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pickOneTime")}</p>
+      )}
+      <SubmitButton className="btn text-lg" disabled={count === 0}>{t("saveChanges")}</SubmitButton>
     </form>
   );
 }

@@ -29,6 +29,7 @@ function defaultTime(offsetHours: number): string {
 export function AvailabilityPanel({ eventId, known }: { eventId: string; known: boolean }) {
   const { t, locale } = useI18n();
   const tag = localeTag(locale);
+  const [open, setOpen] = useState(false);
   const [range, setRange] = useState(false);
   const [day, setDay] = useState(() => tliv(new Date()).slice(0, 10));
   const [time, setTime] = useState(() => defaultTime(1));
@@ -38,6 +39,20 @@ export function AvailabilityPanel({ eventId, known }: { eventId: string; known: 
   const days = useMemo(() => buildDays(tag, { today: t("today"), tomorrow: t("tomorrow") }), [tag, locale]);
   const times = useMemo(() => buildTimes(tag), [tag]);
   const dayItems = withSelectedDay(days, day, tag);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="chip w-full items-center justify-start gap-1.5 text-left"
+        style={{ display: "flex" }}
+        onClick={() => setOpen(true)}
+      >
+        <span aria-hidden>🕗</span>
+        {t("suggestTime")}
+      </button>
+    );
+  }
 
   return (
     <form action={addAvailability} className="flex flex-col gap-3">
