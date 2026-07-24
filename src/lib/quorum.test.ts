@@ -60,3 +60,74 @@ describe("resolveQuorum", () => {
     expect(q.confirmed).toBe(false);
   });
 });
+
+import { resolveEvent, type RsvpFull, type OptionLike, type VoteLike } from "./quorum";
+import { isAvailableAt } from "./availability";
+
+const opt = (id: string, min = 0): OptionLike => ({ id, startsAt: new Date(Date.UTC(2026, 0, 1, 18 + min, 0, 0)) });
+const rf = (userId: string, personalMin = 0, state: RsvpFull["state"] = "IN"): RsvpFull => ({ userId, state, personalMin });
+const vt = (optionId: string, userId: string): VoteLike => ({ optionId, userId });
+
+describe("resolveEvent", () => {
+  it("single option behaves like a classic RSVP (IN users count, no explicit votes)", () => {
+    const res = resolveEvent([opt("A")], [], [rf("a"), rf("b")], [], isAvailableAt);
+    expect(res.leaderOptionId).toBe("A");
+    expect(res.perOption.get("A")!.attending.sort()).toEqual(["a", "b"]);
+    expect(res.confirmed).toBe(true);
+  });
+
+  it("per-slot cascade: interest only counts once a slot clears each threshold", () => {
+    // A: a,b,c all want it (thresholds ok) -> 3 attending; B: only c wants it -> 1
+    const res = resolveEvent(
+      [opt("A", 0), opt("B", 1)],
+      [vt("A", "a"), vt("A", "b"), vt("A", "c"), vt("B", "c")],
+      [rf("a"), rf("b"), rf("c")],
+      [],
+      isAvailableAt,
+    );
+    expect(res.leaderOptionId).toBe("A");
+    expect(res.perOption.get("A")!.attending.length).toBe(3);
+    expect(res.perOption.get("B")!.attending.length).toBe(1);
+    expect(res.confirmed).toBe(true);
+  });
+
+  it("a high personal threshold keeps you from counting for a thin slot", () => {
+    // b needs >=3 but slot B only has b -> b drops, B has 0 attending
+    const res = resolveEvent(
+      [opt("A", 0), opt("B", 1)],
+      [vt("A", "a"), vt("A", "b"), vt("B", "b")],
+      [rf("a", 0), rf("b", 3)],
+      [],
+      isAvailableAt,
+    );
+    // On A: a(min0)+b(min3) -> pool size 2 < 3 so b drops, only a stays
+    expect(res.perOption.get("A")!.attending).toEqual(["a"]);
+    expect(res.perOption.get("B")!.attending).toEqual([]);
+    expect(res.confirmed).toBe(false);
+  });
+
+  it("MAYBE/OUT voters do not count toward a slot", () => {
+    const res = resolveEvent(
+      [opt("A")],
+      [vt("A", "a"), vt("A", "b"), vt("A", "c")],
+      [rf("a"), rf("b", 0, "MAYBE"), rf("c", 0, "OUT")],
+      [],
+      isAvailableAt,
+    );
+    expect(res.perOption.get("A")!.attending).toEqual(["a"]);
+  });
+
+  it("leader breaks ties by raw interest then earliest", () => {
+    // A and B each end with 1 attending; A has more raw voters -> A leads
+    const res = resolveEvent(
+      [opt("A", 0), opt("B", 2)],
+      [vt("A", "a"), vt("B", "b")],
+      [rf("a"), rf("b")],
+      [],
+      isAvailableAt,
+    );
+    expect(res.perOption.get("A")!.attending).toEqual(["a"]);
+    expect(res.perOption.get("B")!.attending).toEqual(["b"]);
+    expect(res.leaderOptionId).toBe("A");
+  });
+});

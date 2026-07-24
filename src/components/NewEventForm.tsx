@@ -4,9 +4,7 @@ import { useState } from "react";
 import { createEvent } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
-import { CustomDatePill, Strip, buildDays, buildTimes, localeTag, toLocalInputValue as tliv, withSelectedDay } from "./DateTimeField";
-import { EmojiPicker, TimePicker } from "./EventFormBits";
-import { useMemo } from "react";
+import { EmojiPicker, FlexSlider, TimeMultiPicker } from "./EventFormBits";
 import { SubmitButton } from "./SubmitButton";
 
 export function NewEventForm({
@@ -18,29 +16,9 @@ export function NewEventForm({
   groups: { id: string; name: string }[];
   defaultGroupId?: string;
 }) {
-  const { t, locale } = useI18n();
-  const tag = localeTag(locale);
-  const [isPoll, setIsPoll] = useState(false);
-  const [options, setOptions] = useState<string[]>([]);
-  const [pollDay, setPollDay] = useState(() => tliv(new Date()).slice(0, 10));
+  const { t } = useI18n();
   const [publicVotes, setPublicVotes] = useState(true);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const pollDays = useMemo(() => buildDays(tag, { today: t("today"), tomorrow: t("tomorrow") }), [tag, locale]);
-  const pollTimes = useMemo(() => buildTimes(tag), [tag]);
-
-  function optionLabel(v: string): string {
-    const todayKey = tliv(new Date()).slice(0, 10);
-    const tomorrowKey = tliv(new Date(Date.now() + 86_400_000)).slice(0, 10);
-    const d = new Date(v);
-    const day =
-      v.slice(0, 10) === todayKey
-        ? t("today")
-        : v.slice(0, 10) === tomorrowKey
-          ? t("tomorrow")
-          : d.toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
-    return `${day} · ${d.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" })}`;
-  }
+  const [count, setCount] = useState(0);
 
   return (
     <form action={createEvent} className="flex flex-col gap-5">
@@ -51,8 +29,8 @@ export function NewEventForm({
         <input
           id="title"
           name="title"
-          required
           maxLength={80}
+          defaultValue="Coffee"
           placeholder={t("titlePlaceholder")}
           className="field text-lg"
         />
@@ -84,84 +62,17 @@ export function NewEventForm({
       </div>
       <input type="hidden" name="publicVotes" value={publicVotes ? "1" : "0"} />
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <span className="label">{t("whenQ")}</span>
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" className="chip" data-on={!isPoll} onClick={() => setIsPoll(false)}>
-            {t("pickATime")}
-          </button>
-          <button type="button" className="chip" data-on={isPoll} onClick={() => setIsPoll(true)}>
-            {t("letPeopleVote")}
-          </button>
-        </div>
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whenPickHint")}</p>
+        <TimeMultiPicker onCountChange={setCount} />
+        <FlexSlider />
       </div>
-      <input type="hidden" name="isPoll" value={isPoll ? "1" : "0"} />
 
-      {!isPoll ? (
-        <TimePicker />
-      ) : (
-        <div className="flex flex-col gap-3 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
-          <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pollHint")}</p>
-          <Strip
-            items={withSelectedDay(pollDays, pollDay, tag)}
-            selected={pollDay}
-            onPick={setPollDay}
-            ariaLabel={t("whenQ")}
-            trailing={
-              <CustomDatePill
-                selectedDay={pollDay}
-                stripKeys={pollDays.map((d) => d.key)}
-                onPick={setPollDay}
-              />
-            }
-          />
-          <Strip
-            items={pollTimes}
-            selected={options.filter((o) => o.startsWith(pollDay)).map((o) => o.slice(11))}
-            onPick={(time) => {
-              const v = `${pollDay}T${time}`;
-              setOptions((prev) =>
-                prev.includes(v)
-                  ? prev.filter((x) => x !== v)
-                  : prev.length >= 6
-                    ? prev
-                    : [...prev, v].sort()
-              );
-            }}
-            isDisabled={(time) =>
-              pollDay === tliv(new Date()).slice(0, 10) && time < tliv(new Date()).slice(11)
-            }
-            ariaLabel={t("whenQ")}
-          />
-          {options.length > 0 && (
-            <div className="flex flex-col gap-1.5 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <span className="label">{t("chosenTimes")}</span>
-              <div className="flex flex-wrap gap-1.5">
-                {options.map((o) => (
-                  <button
-                    key={o}
-                    type="button"
-                    className="chip text-sm"
-                    aria-label={t("removeOption")}
-                    onClick={() => setOptions(options.filter((x) => x !== o))}
-                  >
-                    {optionLabel(o)} ✕
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {options.map((o) => (
-            <input key={o} type="hidden" name="option" value={new Date(o).toISOString()} />
-          ))}
-
-        </div>
+      {count === 0 && (
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pickOneTime")}</p>
       )}
-
-      {isPoll && options.length < 2 && (
-        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pickTwoTimes")}</p>
-      )}
-      <SubmitButton className="btn text-lg" disabled={isPoll && options.length < 2}>
+      <SubmitButton className="btn text-lg" disabled={count === 0}>
         {t("createPlan")}
       </SubmitButton>
     </form>

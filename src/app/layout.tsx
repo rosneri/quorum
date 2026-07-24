@@ -19,6 +19,7 @@ const rubik = Rubik({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://quorumeet.vercel.app"),
   title: "Quorum",
   description: "Spontaneous plans that only happen when enough friends are in.",
   manifest: "/manifest.webmanifest",

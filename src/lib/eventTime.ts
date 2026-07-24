@@ -3,11 +3,15 @@
 /** How long after an event's window a timed plan lingers before it's "past". */
 export const PAST_GRACE_MS = 3 * 3_600_000;
 
-type TimedEvent = { isPoll: boolean; startsAt: Date | null; flexMinutes: number | null };
+type TimedEvent = { startsAt: Date | null; flexMinutes: number | null };
 
-/** When a timed plan ages out: start + flex + grace. Null for polls/timeless. */
+/**
+ * When a timed plan ages out: start + flex + grace. Null when the event has no
+ * decided time yet (a multi-time plan still choosing), so it's neither live nor
+ * past.
+ */
 function endOf(event: TimedEvent): number | null {
-  if (event.isPoll || !event.startsAt) return null;
+  if (!event.startsAt) return null;
   return event.startsAt.getTime() + (event.flexMinutes ?? 0) * 60_000 + PAST_GRACE_MS;
 }
 
