@@ -6,14 +6,19 @@ import { useI18n } from "./I18nProvider";
 export function QuorumMeter({
   attending,
   confirmed,
+  soloMaybe = false,
 }: {
   attending: number;
   confirmed: boolean;
+  /** viewer is the only rsvp and is on MAYBE — nudge them to start it */
+  soloMaybe?: boolean;
 }) {
   const { t } = useI18n();
   const text =
     attending === 0
-      ? t("meterNone")
+      ? soloMaybe
+        ? t("meterMaybeSolo")
+        : t("meterNone")
       : confirmed
         ? t("meterOn", { n: attending })
         : t("meterCount", { n: attending });

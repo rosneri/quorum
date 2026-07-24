@@ -3,6 +3,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { joinGroup } from "@/lib/actions";
 import { NameField } from "@/components/NameField";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { getT } from "@/lib/i18n";
 import { SubmitButton } from "@/components/SubmitButton";
 
@@ -29,6 +30,7 @@ export default async function JoinGroup({ params }: PageProps<"/g/join/[token]">
 
   return (
     <main className="flex min-h-[70dvh] flex-col justify-center gap-6">
+      <div className="flex justify-end"><LocaleToggle /></div>
       <div>
         <p className="label">{t("invitedTo")}</p>
         <h1 className="mt-1 text-4xl font-extrabold tracking-tight">{group.name}</h1>

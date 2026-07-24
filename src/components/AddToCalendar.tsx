@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useI18n } from "./I18nProvider";
 
 function gDate(d: Date): string {
@@ -48,12 +49,17 @@ export function AddToCalendar({
   startsAtIso: string;
 }) {
   const { t } = useI18n();
+  // origin is only known on the client — set it after mount so server and
+  // client markup match (no hydration mismatch).
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+
   const start = new Date(startsAtIso);
   const end = new Date(start.getTime() + 90 * 60_000);
   const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
     title
   )}&dates=${gDate(start)}/${gDate(end)}&details=${encodeURIComponent(
-    `Planned on Quorum: ${typeof window !== "undefined" ? window.location.origin : ""}/e/${token}`
+    `Planned on Quorum: ${origin}/e/${token}`
   )}`;
 
   return (

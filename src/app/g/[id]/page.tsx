@@ -7,8 +7,13 @@ import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
 import { ShareButton } from "@/components/ShareButton";
+import { AutoRefresh } from "@/components/AutoRefresh";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { SubmitButton } from "@/components/SubmitButton";
+import { leaveGroup } from "@/lib/actions";
+import { PAST_GRACE_MS } from "@/lib/status";
 import { getT } from "@/lib/i18n";
-import { GroupAdmin, KickableMember } from "@/components/GroupAdmin";
+import { GroupAdmin, KickableMember, LeaveGroupButton } from "@/components/GroupAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +30,11 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
       events: {
         where: {
           status: { in: ["PROPOSED", "CONFIRMED"] },
-          OR: [{ startsAt: null }, { startsAt: { gte: new Date(Date.now() - 3 * 3_600_000) } }],
+          OR: [
+            { startsAt: { gte: new Date(Date.now() - PAST_GRACE_MS) } },
+            // polls have no time — age them out ~7 days after creation
+            { AND: [{ startsAt: null }, { createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } }] },
+          ],
         },
         include: { rsvps: true },
         orderBy: { createdAt: "desc" },
@@ -40,9 +49,13 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
 
   return (
     <main className="flex flex-col gap-6">
-      <header className="flex items-center gap-3">
-        <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
-        <h1 className="text-2xl font-extrabold">{group.name}</h1>
+      <AutoRefresh seconds={20} />
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
+          <h1 className="text-2xl font-extrabold">{group.name}</h1>
+        </div>
+        <LocaleToggle />
       </header>
 
       <div className="flex gap-3">
@@ -96,7 +109,11 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
         </div>
       </section>
 
-      {group.adminId === userId && <GroupAdmin groupId={group.id} name={group.name} />}
+      {group.adminId === userId ? (
+        <GroupAdmin groupId={group.id} name={group.name} />
+      ) : (
+        <LeaveGroupButton groupId={group.id} />
+      )}
     </main>
   );
 }

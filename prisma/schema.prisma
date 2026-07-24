@@ -61,6 +61,7 @@ model Event {
   isPoll      Boolean     @default(false)
   publicVotes Boolean     @default(true)
   createdAt   DateTime    @default(now())
+  editedAt    DateTime?
 
   group       Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)

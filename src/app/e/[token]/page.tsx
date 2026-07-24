@@ -18,6 +18,8 @@ import { RsvpPanel } from "@/components/RsvpPanel";
 import { NameField } from "@/components/NameField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { reopenEvent, removeAvailability } from "@/lib/actions";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { isPast } from "@/lib/status";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +63,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           {t("cancelledBlurb")}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          {user && (
+          {mine && (
             <form action={reopenEvent}>
               <input type="hidden" name="eventId" value={event.id} />
               <SubmitButton className="btn">{t("reopenPlan")}</SubmitButton>
@@ -75,6 +77,8 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   }
 
   const isCreator = user?.id === event.creatorId;
+  const past = isPast(event);
+  const wasEdited = !!event.editedAt && event.editedAt.getTime() > event.createdAt.getTime();
   const attendingSet = new Set(q.attending);
   const wasPoll = !event.isPoll && event.pollOptions.length > 0;
   const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
@@ -83,9 +87,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   return (
     <main className="flex flex-col gap-6">
       <AutoRefresh seconds={8} />
-      <header className="flex items-center gap-3">
-        <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
-        <StatusChip status={event.status} isPoll={event.isPoll} />
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
+          <StatusChip status={event.status} isPoll={event.isPoll} isPast={past} />
+        </div>
+        <LocaleToggle />
       </header>
 
       <div className="flex flex-col gap-2">
@@ -109,19 +116,40 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           ) : null}
           {event.group ? ` · ${event.group.name}` : ""} · {t("by", { name: event.creator.name })}
         </p>
-        {wasPoll && event.startsAt && (
-          <span
-            className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
-            style={{ background: "var(--color-accent-2)" }}
-          >
-            {t("decidedByVote")}
-          </span>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {wasPoll && event.startsAt && (
+            <span
+              className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
+              style={{ background: "var(--color-accent-2)" }}
+            >
+              {t("decidedByVote")}
+            </span>
+          )}
+          {wasEdited && !past && (
+            <span
+              className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
+              style={{ background: "var(--color-accent-2)" }}
+            >
+              {t("timeUpdated")}
+            </span>
+          )}
+        </div>
       </div>
 
-      {!event.isPoll && (
+      {past && (
+        <div className="card flex flex-col gap-1 p-5">
+          <span className="text-lg font-bold">🌙 {t("behindUs")}</span>
+          <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>{t("behindUsBlurb")}</p>
+        </div>
+      )}
+
+      {!event.isPoll && !past && (
         <div className="card flex flex-col gap-4 p-5">
-          <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
+          <QuorumMeter
+            attending={q.attending.length}
+            confirmed={q.confirmed}
+            soloMaybe={mine?.state === "MAYBE" && event.rsvps.length === 1}
+          />
           <RsvpPanel
             eventId={event.id}
             known={!!user}
@@ -135,7 +163,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {event.isPoll && (
+      {event.isPoll && !past && (
         <div className="card flex flex-col gap-3 p-5">
           <span className="label">{t("whenWorks")}</span>
           {!event.publicVotes && (
@@ -155,7 +183,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             return (
               <div key={o.id} className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <form action={vote} className="flex-1">
+                  <form action={vote} className="min-w-0 flex-1">
                     <input type="hidden" name="optionId" value={o.id} />
                     <SubmitButton
                       className="chip w-full items-center justify-between text-left"
@@ -173,21 +201,22 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     </SubmitButton>
                   </form>
                   {isCreator && (
-                    <form action={lockOption}>
+                    <form action={lockOption} className="shrink-0">
                       <input type="hidden" name="optionId" value={o.id} />
                       <SubmitButton className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</SubmitButton>
                     </form>
                   )}
                 </div>
-                <div
-                  className="h-1.5 rounded-full"
-                  style={{
-                    background: "var(--color-accent-2)",
-                    width: `${(o.votes.length / top) * 100}%`,
-                    opacity: o.votes.length ? 1 : 0,
-                    transition: "width 220ms var(--ease-out)",
-                  }}
-                />
+                {o.votes.length > 0 && (
+                  <div
+                    className="h-1.5 rounded-full"
+                    style={{
+                      background: "var(--color-accent-2)",
+                      width: `${(o.votes.length / top) * 100}%`,
+                      transition: "width 220ms var(--ease-out)",
+                    }}
+                  />
+                )}
                 {(event.publicVotes || isCreator) && o.votes.length > 0 && (
                   <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
                     {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
@@ -280,7 +309,16 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       <div className="flex items-center gap-3">
         <ShareButton path={`/e/${event.inviteToken}`} title={event.title} />
-        {isCreator && <CancelButton eventId={event.id} />}
+        {isCreator && !past && (
+          <Link
+            href={`/e/${event.inviteToken}/edit`}
+            className="text-sm font-semibold"
+            style={{ color: "var(--color-ink-2)" }}
+          >
+            {t("editPlan")}
+          </Link>
+        )}
+        {isCreator && !past && <CancelButton eventId={event.id} />}
       </div>
     </main>
   );
