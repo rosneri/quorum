@@ -40,7 +40,7 @@
   --color-accent-3: var(--color-accent-3);
   --color-mint: var(--color-mint);
   --color-mint-deep: var(--color-mint-deep);
-  --font-sans: var(--font-jakarta), ui-rounded, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), var(--font-rubik), ui-rounded, system-ui, sans-serif;
 }
 
 html,
@@ -51,8 +51,15 @@ body {
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-jakarta), ui-rounded, system-ui, sans-serif;
+  font-family: var(--font-jakarta), var(--font-rubik), ui-rounded, system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+[dir="rtl"] body {
+  font-family: var(--font-rubik), ui-rounded, system-ui, sans-serif;
+}
+[dir="rtl"] .label {
+  letter-spacing: 0;
 }
 
 /* ---- Pressable button (Hum signature: hard bottom edge, real press) ---- */

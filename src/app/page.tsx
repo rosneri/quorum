@@ -7,37 +7,40 @@ import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { LocaleToggle } from "@/components/LocaleToggle";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const { t } = await getT();
   const user = await getUser();
 
   if (!user) {
     return (
       <main className="flex min-h-[70dvh] flex-col justify-center gap-8">
         <div>
-          <h1 className="text-5xl font-extrabold tracking-tight">Quorum</h1>
+          <div className="flex items-start justify-between"><h1 className="text-5xl font-extrabold tracking-tight">{t("appName")}</h1><LocaleToggle /></div>
           <p className="mt-3 text-lg" style={{ color: "var(--color-ink-2)" }}>
-            Coffee in an hour? The plan happens only when enough friends are in.
+            {t("tagline")}
           </p>
         </div>
         <form action={onboard} className="card flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label className="label" htmlFor="name">What should friends call you?</label>
+            <label className="label" htmlFor="name">{t("whatToCallYou")}</label>
             <input
               id="name"
               name="name"
               required
               maxLength={40}
-              placeholder="Your name"
+              placeholder={t("yourName")}
               className="field text-lg"
               autoComplete="given-name"
             />
           </div>
-          <button className="btn text-lg">Let&apos;s go</button>
+          <button className="btn text-lg">{t("letsGo")}</button>
           <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-            No password, no email. Your name lives on this device.
+            {t("noPassword")}
           </p>
         </form>
       </main>
@@ -72,21 +75,22 @@ export default async function Home() {
     <main className="flex flex-col gap-8">
       <AutoRefresh seconds={20} />
       <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold tracking-tight">Quorum</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("appName")}</h1>
         <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>
-          Hi, {user.name}
+          {t("hi", { name: user.name })}
         </span>
+        <LocaleToggle />
       </header>
 
       <Link href="/new" className="btn text-lg">
-        + New plan
+        {t("newPlan")}
       </Link>
 
       <section className="flex flex-col gap-3">
-        <h2 className="label">Plans</h2>
+        <h2 className="label">{t("plans")}</h2>
         {events.length === 0 && (
           <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-            Nothing brewing yet. Make a plan and share the link.
+            {t("noPlans")}
           </p>
         )}
         {events.map((e) => {
@@ -101,7 +105,7 @@ export default async function Home() {
               </div>
               <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
                 {e.isPoll ? (
-                  "Voting on a time"
+                  t("votingOnTime")
                 ) : e.startsAt ? (
                   <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
                 ) : null}
@@ -117,21 +121,21 @@ export default async function Home() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="label">Groups</h2>
+          <h2 className="label">{t("groups")}</h2>
           <Link href="/g/new" className="text-sm font-bold" style={{ color: "var(--color-accent-2)" }}>
-            + New group
+            {t("newGroup")}
           </Link>
         </div>
         {groups.length === 0 && (
           <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-            Groups keep your regulars one tap away.
+            {t("groupsHint")}
           </p>
         )}
         {groups.map((g) => (
           <Link key={g.id} href={`/g/${g.id}`} className="card flex items-center justify-between p-4">
             <span className="font-bold">{g.name}</span>
             <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-              {g._count.memberships} {g._count.memberships === 1 ? "member" : "members"}
+              {g._count.memberships} {g._count.memberships === 1 ? t("member") : t("members")}
             </span>
           </Link>
         ))}

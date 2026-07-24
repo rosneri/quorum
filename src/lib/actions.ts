@@ -20,6 +20,15 @@ async function ensureUser(name?: string): Promise<string> {
   return user.id;
 }
 
+export async function setLocale(formData: FormData) {
+  const locale = String(formData.get("locale") ?? "");
+  if (locale !== "en" && locale !== "he") return;
+  const { cookies } = await import("next/headers");
+  const store = await cookies();
+  store.set("locale", locale, { maxAge: 60 * 60 * 24 * 365, path: "/" });
+  revalidatePath("/", "layout");
+}
+
 export async function onboard(formData: FormData) {
   await ensureUser(String(formData.get("name") ?? ""));
   const to = String(formData.get("redirectTo") ?? "/");

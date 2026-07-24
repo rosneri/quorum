@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "./I18nProvider";
 
 export function ShareButton({ path, title }: { path: string; title: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -22,7 +24,7 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
 
   return (
     <button type="button" onClick={share} className="btn btn-quiet text-sm">
-      {copied ? "Link copied ✓" : "Invite friends"}
+      {copied ? t("linkCopied") : t("inviteFriends")}
     </button>
   );
 }

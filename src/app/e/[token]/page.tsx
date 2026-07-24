@@ -16,10 +16,12 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { ShareButton } from "@/components/ShareButton";
 import { RsvpPanel } from "@/components/RsvpPanel";
 import { NameField } from "@/components/NameField";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventPage({ params }: PageProps<"/e/[token]">) {
+  const { t, locale } = await getT();
   const { token } = await params;
   const [user, event] = await Promise.all([
     getUser(),
@@ -43,22 +45,22 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       <main className="flex min-h-[75dvh] flex-col items-center justify-center gap-5 text-center">
         <span className="text-6xl pop-in">🌧️</span>
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight">This plan was called off</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">{t("calledOff")}</h1>
           <p className="text-lg font-semibold" style={{ color: "var(--color-ink-2)" }}>
             {event.emoji ? `${event.emoji} ` : ""}{event.title}
           </p>
           {event.startsAt && (
             <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-              was set for <When iso={event.startsAt.toISOString()} flexMinutes={event.flexMinutes} />
+              {t("wasSetFor")} <When iso={event.startsAt.toISOString()} flexMinutes={event.flexMinutes} />
             </p>
           )}
         </div>
         <p className="max-w-xs text-sm" style={{ color: "var(--color-ink-2)" }}>
-          Not enough people could make it this time. Next one&apos;s on you?
+          {t("cancelledBlurb")}
         </p>
         <div className="flex gap-3">
-          <Link href="/new" className="btn">Start a new plan</Link>
-          <Link href="/" className="btn btn-quiet">Home</Link>
+          <Link href="/new" className="btn">{t("startNewPlan")}</Link>
+          <Link href="/" className="btn btn-quiet">{t("home")}</Link>
         </div>
       </main>
     );
@@ -73,7 +75,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
     <main className="flex flex-col gap-6">
       <AutoRefresh seconds={8} />
       <header className="flex items-center gap-3">
-        <Link href="/" aria-label="Home" className="chip">←</Link>
+        <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
         <StatusChip status={event.status} isPoll={event.isPoll} />
       </header>
 
@@ -83,18 +85,18 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </h1>
         <p className="text-base" style={{ color: "var(--color-ink-2)" }}>
           {event.isPoll ? (
-            "Vote on a time below"
+            t("voteOnTimeBelow")
           ) : event.startsAt ? (
             <When iso={event.startsAt.toISOString()} flexMinutes={event.flexMinutes} />
           ) : null}
-          {event.group ? ` · ${event.group.name}` : ""} · by {event.creator.name}
+          {event.group ? ` · ${event.group.name}` : ""} · {t("by", { name: event.creator.name })}
         </p>
         {wasPoll && event.startsAt && (
           <span
             className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
             style={{ background: "var(--color-accent-2)" }}
           >
-            📌 Time decided by vote
+            {t("decidedByVote")}
           </span>
         )}
       </div>
@@ -121,12 +123,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       {event.isPoll && (
         <div className="card flex flex-col gap-3 p-5">
-          <span className="label">When works? Tap all that do.</span>
+          <span className="label">{t("whenWorks")}</span>
           {!user && (
             <form action={onboard} className="flex flex-col gap-3">
               <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
               <NameField known={false} />
-              <button className="btn self-start text-sm">Save name &amp; vote</button>
+              <button className="btn self-start text-sm">{t("saveNameVote")}</button>
             </form>
           )}
           {event.pollOptions.map((o) => {
@@ -148,7 +150,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                       <span className="font-bold">
                         {o.votes.length} ✋
                         {freeHere.length > 0 && (
-                          <span style={{ color: "var(--color-mint-deep)" }}> · {freeHere.length} free</span>
+                          <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere.length })}</span>
                         )}
                       </span>
                     </button>
@@ -156,7 +158,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                   {isCreator && (
                     <form action={lockOption}>
                       <input type="hidden" name="optionId" value={o.id} />
-                      <button className="btn btn-mint px-3 py-1.5 text-sm">Lock in</button>
+                      <button className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</button>
                     </form>
                   )}
                 </div>
@@ -179,12 +181,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           })}
           {event.availabilities.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <span className="label">Free when</span>
+              <span className="label">{t("freeWhen")}</span>
               {event.availabilities.map((a) => (
                 <div key={a.userId} className="flex items-center justify-between text-sm">
                   <span className="font-semibold">
                     {nameById.get(a.userId)}
-                    {a.userId === user?.id ? " (you)" : ""}
+                    {a.userId === user?.id ? ` (${t("you")})` : ""}
                   </span>
                   <span style={{ color: "var(--color-ink-2)" }}>
                     <When iso={a.from.toISOString()} />
@@ -215,8 +217,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             <>
               <LockCustom eventId={event.id} />
               <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                You created this — lock in the winning time when the votes are in. Everyone who
-                said that time works will be counted in automatically.
+                {t("creatorHint")}
               </p>
             </>
           )}
@@ -225,7 +226,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       {!event.isPoll && event.rsvps.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="label">Who&apos;s in</h2>
+          <h2 className="label">{t("whosIn")}</h2>
           <div className="flex flex-col gap-1.5">
             {event.rsvps.map((r) => {
               const attending = attendingSet.has(r.userId);
@@ -234,14 +235,14 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 <div key={r.userId} className="flex items-center justify-between text-sm">
                   <span className="font-semibold">
                     {r.user.name}
-                    {r.userId === user?.id ? " (you)" : ""}
+                    {r.userId === user?.id ? ` (${t("you")})` : ""}
                   </span>
                   <span style={{ color: "var(--color-ink-2)" }}>
                     {attending
-                      ? "In ✓"
+                      ? t("rIn")
                       : waiting
-                        ? `Waiting for ${r.personalMin}+`
-                        : "Out"}
+                        ? t("waitingFor", { n: r.personalMin })
+                        : t("rOut")}
                   </span>
                 </div>
               );

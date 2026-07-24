@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createEvent } from "@/lib/actions";
 import { NameField } from "./NameField";
+import { useI18n } from "./I18nProvider";
 
 const EMOJI = ["☕", "🍕", "🏀", "🎬", "🎲", "🍻", "🥾", "🎮"];
 
@@ -33,6 +34,7 @@ export function NewEventForm({
   groups: { id: string; name: string }[];
   defaultGroupId?: string;
 }) {
+  const { t } = useI18n();
   const [emoji, setEmoji] = useState("☕");
   const [isPoll, setIsPoll] = useState(false);
   const [when, setWhen] = useState(quickTime(1));
@@ -45,13 +47,13 @@ export function NewEventForm({
       <NameField known={known} />
 
       <div className="flex flex-col gap-1.5">
-        <label className="label" htmlFor="title">What&apos;s the plan?</label>
+        <label className="label" htmlFor="title">{t("whatsThePlan")}</label>
         <input
           id="title"
           name="title"
           required
           maxLength={80}
-          placeholder="Coffee at Nira's"
+          placeholder={t("titlePlaceholder")}
           className="field text-lg"
         />
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -66,9 +68,9 @@ export function NewEventForm({
 
       {groups.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <label className="label" htmlFor="groupId">Who&apos;s invited?</label>
+          <label className="label" htmlFor="groupId">{t("whoInvited")}</label>
           <select id="groupId" name="groupId" defaultValue={defaultGroupId ?? ""} className="field">
-            <option value="">Anyone with the link</option>
+            <option value="">{t("anyoneWithLink")}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
@@ -77,13 +79,13 @@ export function NewEventForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <span className="label">When?</span>
+        <span className="label">{t("whenQ")}</span>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" className="chip" data-on={!isPoll} onClick={() => setIsPoll(false)}>
-            Pick a time
+            {t("pickATime")}
           </button>
           <button type="button" className="chip" data-on={isPoll} onClick={() => setIsPoll(true)}>
-            Let people vote
+            {t("letPeopleVote")}
           </button>
         </div>
       </div>
@@ -93,9 +95,9 @@ export function NewEventForm({
         <>
           <div className="flex flex-wrap gap-1.5">
             {[
-              ["In 1 hour", quickTime(1)],
-              ["In 2 hours", quickTime(2)],
-              ["Tonight 8pm", tonight()],
+              [t("in1Hour"), quickTime(1)],
+              [t("in2Hours"), quickTime(2)],
+              [t("tonight8"), tonight()],
             ].map(([label, v]) => (
               <button key={label} type="button" className="chip" data-on={when === v} onClick={() => setWhen(v)}>
                 {label}
@@ -114,7 +116,7 @@ export function NewEventForm({
           <input type="hidden" name="startsAt" value={when ? new Date(when).toISOString() : ""} />
           <div className="flex flex-col gap-1.5">
             <label className="label" htmlFor="flex">
-              Flexibility: {flex === 0 ? "sharp" : `±${flex} min`}
+              {flex === 0 ? t("flexSharp") : t("flexMin", { n: flex })}
             </label>
             <input
               id="flex"
@@ -148,7 +150,7 @@ export function NewEventForm({
                 <button
                   type="button"
                   className="chip"
-                  aria-label="Remove option"
+                  aria-label={t("removeOption")}
                   onClick={() => setOptions(options.filter((_, j) => j !== i))}
                 >
                   ✕
@@ -158,14 +160,14 @@ export function NewEventForm({
           ))}
           {options.length < 6 && (
             <button type="button" className="chip self-start" onClick={() => setOptions([...options, tonight()])}>
-              + Add option
+              {t("addOption")}
             </button>
           )}
         </div>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <span className="label">Happens only if at least…</span>
+        <span className="label">{t("happensOnlyIf")}</span>
         <div className="flex gap-1.5">
           {[2, 3, 4, 5, 6].map((n) => (
             <button key={n} type="button" className="chip" data-on={minQuorum === n} onClick={() => setMinQuorum(n)}>
@@ -175,11 +177,11 @@ export function NewEventForm({
         </div>
         <input type="hidden" name="minQuorum" value={minQuorum} />
         <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-          The plan confirms itself once {minQuorum} people are in. You count too.
+          {t("quorumHint", { n: minQuorum })}
         </p>
       </div>
 
-      <button className="btn text-lg">Create plan</button>
+      <button className="btn text-lg">{t("createPlan")}</button>
     </form>
   );
 }

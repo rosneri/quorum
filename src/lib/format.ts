@@ -1,6 +1,13 @@
-export function formatWhen(startsAt: Date, flexMinutes?: number | null): string {
+export type DayLabels = { today: string; tomorrow: string; yesterday: string };
+
+export function formatWhen(
+  startsAt: Date,
+  flexMinutes: number | null | undefined,
+  locale: string,
+  labels: DayLabels
+): string {
   const now = new Date();
-  const time = startsAt.toLocaleTimeString(undefined, {
+  const time = startsAt.toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
   });
@@ -12,11 +19,11 @@ export function formatWhen(startsAt: Date, flexMinutes?: number | null): string 
   today.setHours(0, 0, 0, 0);
   const diffDays = Math.round((startDay.getTime() - today.getTime()) / 86_400_000);
 
-  if (diffDays === 0) day = "Today";
-  else if (diffDays === 1) day = "Tomorrow";
-  else if (diffDays === -1) day = "Yesterday";
+  if (diffDays === 0) day = labels.today;
+  else if (diffDays === 1) day = labels.tomorrow;
+  else if (diffDays === -1) day = labels.yesterday;
   else
-    day = startsAt.toLocaleDateString(undefined, {
+    day = startsAt.toLocaleDateString(locale, {
       weekday: "short",
       month: "short",
       day: "numeric",

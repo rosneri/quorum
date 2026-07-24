@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { rsvp } from "@/lib/actions";
 import { NameField } from "./NameField";
+import { useI18n } from "./I18nProvider";
 
 export function RsvpPanel({
   eventId,
@@ -15,6 +16,7 @@ export function RsvpPanel({
   myState: "IN" | "OUT" | null;
   myMin: number;
 }) {
+  const { t } = useI18n();
   const [min, setMin] = useState(myMin);
   const formRef = useRef<HTMLFormElement>(null);
   const inRef = useRef<HTMLButtonElement>(null);
@@ -36,8 +38,8 @@ export function RsvpPanel({
       <NameField known={known} />
 
       <div className="flex flex-col gap-1.5">
-        <span className="label">I&apos;ll come if at least…</span>
-        <div className="flex items-center gap-2">
+        <span className="label">{t("illComeIf")}</span>
+        <div className="flex flex-wrap items-center gap-2">
           {[0, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
@@ -46,23 +48,21 @@ export function RsvpPanel({
               data-on={min === n}
               onClick={() => pickMin(n)}
             >
-              {n === 0 ? "Anyone" : `${n}+`}
+              {n === 0 ? t("anyone") : `${n}+`}
             </button>
           ))}
         </div>
         <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-          {min === 0
-            ? "You're in no matter how many come."
-            : `You only count as attending once ${min} people (including you) are in.`}
+          {min === 0 ? t("thresholdHint0") : t("thresholdHintN", { n: min })}
         </p>
       </div>
 
       <div className="flex gap-3">
         <button ref={inRef} name="state" value="IN" className="btn flex-1" data-on={myState === "IN"}>
-          {myState === "IN" ? "You're in ✓" : "I'm in"}
+          {myState === "IN" ? t("youreIn") : t("imIn")}
         </button>
         <button name="state" value="OUT" className="btn btn-quiet flex-1">
-          {myState === "OUT" ? "You're out ✓" : "Can't make it"}
+          {myState === "OUT" ? t("youreOut") : t("cantMakeIt")}
         </button>
       </div>
     </form>

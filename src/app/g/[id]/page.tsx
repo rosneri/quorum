@@ -7,10 +7,12 @@ import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
 import { ShareButton } from "@/components/ShareButton";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
+  const { t, locale } = await getT();
   const { id } = await params;
   const userId = await getUserId();
   if (!userId) redirect("/");
@@ -38,20 +40,20 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
   return (
     <main className="flex flex-col gap-6">
       <header className="flex items-center gap-3">
-        <Link href="/" aria-label="Home" className="chip">←</Link>
+        <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
         <h1 className="text-2xl font-extrabold">{group.name}</h1>
       </header>
 
       <div className="flex gap-3">
-        <Link href={`/new?g=${group.id}`} className="btn flex-1">+ New plan</Link>
-        <ShareButton path={`/g/join/${group.inviteToken}`} title={`Join ${group.name} on Quorum`} />
+        <Link href={`/new?g=${group.id}`} className="btn flex-1">{t("newPlan")}</Link>
+        <ShareButton path={`/g/join/${group.inviteToken}`} title={t("joinTitle", { name: group.name })} />
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="label">Plans</h2>
+        <h2 className="label">{t("plans")}</h2>
         {group.events.length === 0 && (
           <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-            No plans yet — start one.
+            {t("noGroupPlans")}
           </p>
         )}
         {group.events.map((e) => {
@@ -78,11 +80,11 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="label">Members</h2>
+        <h2 className="label">{t("membersLabel")}</h2>
         <div className="flex flex-wrap gap-1.5">
           {group.memberships.map((m) => (
             <span key={m.userId} className="chip cursor-default">
-              {m.user.name}{m.userId === userId ? " (you)" : ""}
+              {m.user.name}{m.userId === userId ? ` (${t("you")})` : ""}
             </span>
           ))}
         </div>

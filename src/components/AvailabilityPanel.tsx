@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { setAvailability } from "@/lib/actions";
 import { NameField } from "./NameField";
+import { useI18n } from "./I18nProvider";
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -18,6 +19,7 @@ export function AvailabilityPanel({
   known: boolean;
   mine: { from: string; until: string | null } | null;
 }) {
+  const { t } = useI18n();
   const [range, setRange] = useState(!!mine?.until);
   const [from, setFrom] = useState(
     mine ? toLocalInputValue(new Date(mine.from)) : toLocalInputValue(new Date(Date.now() + 3_600_000))
@@ -33,19 +35,19 @@ export function AvailabilityPanel({
       <input type="hidden" name="eventId" value={eventId} />
       <NameField known={known} />
       <div className="flex items-center justify-between">
-        <span className="label">Or say when you&apos;re free</span>
+        <span className="label">{t("orSayFree")}</span>
         {mine && (
           <button name="clear" value="1" className="text-xs font-semibold" style={{ color: "var(--color-ink-2)" }}>
-            Clear
+            {t("clear")}
           </button>
         )}
       </div>
       <div className="flex gap-1.5">
         <button type="button" className="chip" data-on={!range} onClick={() => setRange(false)}>
-          Specific time
+          {t("specificTime")}
         </button>
         <button type="button" className="chip" data-on={range} onClick={() => setRange(true)}>
-          Time range
+          {t("timeRange")}
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -59,7 +61,7 @@ export function AvailabilityPanel({
         />
         {range && (
           <>
-            <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>to</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>{t("to")}</span>
             <input
               type="datetime-local"
               value={until}
@@ -74,7 +76,7 @@ export function AvailabilityPanel({
       <input type="hidden" name="from" value={from ? new Date(from).toISOString() : ""} />
       <input type="hidden" name="until" value={range && until ? new Date(until).toISOString() : ""} />
       <button className="btn btn-quiet self-start text-sm">
-        {mine ? "Update availability" : "Save availability"}
+        {mine ? t("updateAvailability") : t("saveAvailability")}
       </button>
     </form>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "./I18nProvider";
+
 function gDate(d: Date): string {
   return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
@@ -13,6 +15,7 @@ export function AddToCalendar({
   title: string;
   startsAtIso: string;
 }) {
+  const { t } = useI18n();
   const start = new Date(startsAtIso);
   const end = new Date(start.getTime() + 90 * 60_000);
   const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
@@ -24,10 +27,10 @@ export function AddToCalendar({
   return (
     <div className="flex flex-wrap gap-2">
       <a href={`/e/${token}/ics`} className="chip" download>
-        📅 Add to calendar
+        {t("addToCalendar")}
       </a>
       <a href={google} target="_blank" rel="noreferrer" className="chip">
-        Google Calendar
+        {t("googleCalendar")}
       </a>
     </div>
   );
