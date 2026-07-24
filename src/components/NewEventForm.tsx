@@ -4,7 +4,9 @@ import { useState } from "react";
 import { createEvent } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
-import { DateTimeField } from "./DateTimeField";
+import { CustomDatePill, DateTimeField, Strip, buildDays, buildTimes, localeTag, toLocalInputValue as tliv } from "./DateTimeField";
+import { useMemo } from "react";
+import { SubmitButton } from "./SubmitButton";
 
 const EMOJI = ["☕", "🍕", "🏀", "🎬", "🎲", "🍻", "🥾", "🎮"];
 
@@ -43,13 +45,32 @@ export function NewEventForm({
   groups: { id: string; name: string }[];
   defaultGroupId?: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const tag = localeTag(locale);
   const [emoji, setEmoji] = useState("☕");
   const [isPoll, setIsPoll] = useState(false);
   const [when, setWhen] = useState(quickTime(1));
   const [flex, setFlex] = useState(30);
-  const [minQuorum, setMinQuorum] = useState(2);
-  const [options, setOptions] = useState<string[]>([quickTime(1), tonight()]);
+  const [options, setOptions] = useState<string[]>([]);
+  const [pollDay, setPollDay] = useState(() => tliv(new Date()).slice(0, 10));
+  const [publicVotes, setPublicVotes] = useState(true);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pollDays = useMemo(() => buildDays(tag, { today: t("today"), tomorrow: t("tomorrow") }), [tag, locale]);
+  const pollTimes = useMemo(() => buildTimes(tag), [tag]);
+
+  function optionLabel(v: string): string {
+    const todayKey = tliv(new Date()).slice(0, 10);
+    const tomorrowKey = tliv(new Date(Date.now() + 86_400_000)).slice(0, 10);
+    const d = new Date(v);
+    const day =
+      v.slice(0, 10) === todayKey
+        ? t("today")
+        : v.slice(0, 10) === tomorrowKey
+          ? t("tomorrow")
+          : d.toLocaleDateString(tag, { weekday: "short", day: "numeric", month: "short" });
+    return `${day} · ${d.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" })}`;
+  }
 
   return (
     <form action={createEvent} className="flex flex-col gap-5">
@@ -114,7 +135,9 @@ export function NewEventForm({
               </button>
             ))}
           </div>
-          <DateTimeField value={when} onChange={setWhen} disallowPast />
+          <div className="rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
+            <DateTimeField value={when} onChange={setWhen} disallowPast />
+          </div>
           {/* send UTC — the server may run in a different timezone */}
           <input type="hidden" name="startsAt" value={when ? new Date(when).toISOString() : ""} />
           <div className="flex flex-col gap-1.5">
@@ -135,53 +158,77 @@ export function NewEventForm({
           </div>
         </>
       ) : (
-        <div className="flex flex-col gap-2">
-          {options.map((o, i) => (
-            <div key={i} className="flex gap-2">
-              <div className="flex-1">
-                <DateTimeField
-                  value={o}
-                  onChange={(v) => setOptions(options.map((x, j) => (j === i ? v : x)))}
-                  disallowPast
-                />
+        <div className="flex flex-col gap-3 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
+          <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pollHint")}</p>
+          <Strip
+            items={pollDays}
+            selected={pollDay}
+            onPick={setPollDay}
+            ariaLabel={t("whenQ")}
+            trailing={
+              <CustomDatePill
+                selectedDay={pollDay}
+                stripKeys={pollDays.map((d) => d.key)}
+                onPick={setPollDay}
+              />
+            }
+          />
+          <Strip
+            items={pollTimes}
+            selected={options.filter((o) => o.startsWith(pollDay)).map((o) => o.slice(11))}
+            onPick={(time) => {
+              const v = `${pollDay}T${time}`;
+              setOptions((prev) =>
+                prev.includes(v)
+                  ? prev.filter((x) => x !== v)
+                  : prev.length >= 6
+                    ? prev
+                    : [...prev, v].sort()
+              );
+            }}
+            isDisabled={(time) =>
+              pollDay === tliv(new Date()).slice(0, 10) && time < tliv(new Date()).slice(11)
+            }
+            ariaLabel={t("whenQ")}
+          />
+          {options.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
+              <span className="label">{t("chosenTimes")}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {options.map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    className="chip text-sm"
+                    aria-label={t("removeOption")}
+                    onClick={() => setOptions(options.filter((x) => x !== o))}
+                  >
+                    {optionLabel(o)} ✕
+                  </button>
+                ))}
               </div>
-              <input type="hidden" name="option" value={o ? new Date(o).toISOString() : ""} />
-              {options.length > 2 && (
-                <button
-                  type="button"
-                  className="chip"
-                  aria-label={t("removeOption")}
-                  onClick={() => setOptions(options.filter((_, j) => j !== i))}
-                >
-                  ✕
-                </button>
-              )}
             </div>
-          ))}
-          {options.length < 6 && (
-            <button type="button" className="chip self-start" onClick={() => setOptions([...options, tonight()])}>
-              {t("addOption")}
-            </button>
           )}
+          {options.map((o) => (
+            <input key={o} type="hidden" name="option" value={new Date(o).toISOString()} />
+          ))}
+          <button
+            type="button"
+            className="chip self-start text-sm"
+            data-on={publicVotes}
+            onClick={() => setPublicVotes(!publicVotes)}
+          >
+            {publicVotes ? "👀 " : "🙈 "}{t("showVoters")}
+          </button>
+          <input type="hidden" name="publicVotes" value={publicVotes ? "1" : "0"} />
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <span className="label">{t("happensOnlyIf")}</span>
-        <div className="flex gap-1.5">
-          {[2, 3, 4, 5, 6].map((n) => (
-            <button key={n} type="button" className="chip" data-on={minQuorum === n} onClick={() => setMinQuorum(n)}>
-              {n}
-            </button>
-          ))}
-        </div>
-        <input type="hidden" name="minQuorum" value={minQuorum} />
-        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-          {t("quorumHint", { n: minQuorum })}
-        </p>
-      </div>
+      <input type="hidden" name="minQuorum" value={2} />
 
-      <button className="btn text-lg">{t("createPlan")}</button>
+      <SubmitButton className="btn text-lg" disabled={isPoll && options.length < 2}>
+        {t("createPlan")}
+      </SubmitButton>
     </form>
   );
 }

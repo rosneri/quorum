@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { joinGroup } from "@/lib/actions";
 import { NameField } from "@/components/NameField";
 import { getT } from "@/lib/i18n";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function JoinGroup({ params }: PageProps<"/g/join/[token]">
       <form action={joinGroup} className="card flex flex-col gap-4 p-5">
         <input type="hidden" name="token" value={group.inviteToken} />
         <NameField known={!!userId} />
-        <button className="btn text-lg">{t("joinGroup")}</button>
+        <SubmitButton className="btn text-lg">{t("joinGroup")}</SubmitButton>
       </form>
     </main>
   );

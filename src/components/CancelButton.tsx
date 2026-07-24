@@ -2,6 +2,7 @@
 
 import { cancelEvent } from "@/lib/actions";
 import { useI18n } from "./I18nProvider";
+import { SubmitButton } from "./SubmitButton";
 
 export function CancelButton({ eventId }: { eventId: string }) {
   const { t } = useI18n();
@@ -13,9 +14,9 @@ export function CancelButton({ eventId }: { eventId: string }) {
       }}
     >
       <input type="hidden" name="eventId" value={eventId} />
-      <button className="text-sm font-semibold" style={{ color: "var(--color-accent-3)" }}>
+      <SubmitButton className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--color-accent-3)" }}>
         {t("callItOff")}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

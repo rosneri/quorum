@@ -4,17 +4,23 @@ import { useRef, useState } from "react";
 import { rsvp } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
+import { SubmitButton } from "./SubmitButton";
+
+type State = "IN" | "MAYBE" | "OUT";
 
 export function RsvpPanel({
   eventId,
   known,
   myState,
   myMin,
+  lastOneIn,
 }: {
   eventId: string;
   known: boolean;
-  myState: "IN" | "OUT" | null;
+  myState: State | null;
   myMin: number;
+  /** true when this viewer going OUT would leave nobody in (plan gets called off) */
+  lastOneIn: boolean;
 }) {
   const { t } = useI18n();
   const [min, setMin] = useState(myMin);
@@ -32,7 +38,17 @@ export function RsvpPanel({
   }
 
   return (
-    <form ref={formRef} action={rsvp} className="flex flex-col gap-4">
+    <form
+      ref={formRef}
+      action={rsvp}
+      onSubmit={(e) => {
+        const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        if (submitter?.value === "OUT" && lastOneIn && !confirm(t("confirmLastOut"))) {
+          e.preventDefault();
+        }
+      }}
+      className="flex flex-col gap-4"
+    >
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="personalMin" value={min} />
       <NameField known={known} />
@@ -57,13 +73,21 @@ export function RsvpPanel({
         </p>
       </div>
 
-      <div className="flex gap-3">
-        <button ref={inRef} name="state" value="IN" className="btn flex-1" data-on={myState === "IN"}>
+      <div className="flex gap-2">
+        <SubmitButton ref={inRef} name="state" value="IN" className="btn flex-1 px-2">
           {myState === "IN" ? t("youreIn") : t("imIn")}
-        </button>
-        <button name="state" value="OUT" className="btn btn-quiet flex-1">
+        </SubmitButton>
+        <SubmitButton
+          name="state"
+          value="MAYBE"
+          className="btn btn-quiet flex-1 px-2"
+          data-on={myState === "MAYBE"}
+        >
+          {myState === "MAYBE" ? t("youreMaybe") : t("maybe")}
+        </SubmitButton>
+        <SubmitButton name="state" value="OUT" className="btn btn-quiet flex-1 px-2">
           {myState === "OUT" ? t("youreOut") : t("cantMakeIt")}
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

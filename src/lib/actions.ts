@@ -42,6 +42,7 @@ export async function createGroup(formData: FormData) {
   const group = await prisma.group.create({
     data: {
       name: groupName.slice(0, 60),
+      adminId: userId,
       memberships: { create: { userId } },
     },
   });
@@ -59,6 +60,42 @@ export async function joinGroup(formData: FormData) {
     update: {},
   });
   redirect(`/g/${group.id}`);
+}
+
+async function requireGroupAdmin(groupId: string) {
+  const userId = await getUserId();
+  if (!userId) return null;
+  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  if (!group || group.adminId !== userId) return null;
+  return group;
+}
+
+export async function renameGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const name = String(formData.get("groupName") ?? "").trim();
+  if (!name) return;
+  const group = await requireGroupAdmin(groupId);
+  if (!group) return;
+  await prisma.group.update({ where: { id: groupId }, data: { name: name.slice(0, 60) } });
+  revalidatePath(`/g/${groupId}`);
+}
+
+export async function closeGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const group = await requireGroupAdmin(groupId);
+  if (!group) return;
+  // events survive with groupId -> null (SetNull); their invite links keep working
+  await prisma.group.delete({ where: { id: groupId } });
+  redirect("/");
+}
+
+export async function kickMember(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const targetId = String(formData.get("userId") ?? "");
+  const group = await requireGroupAdmin(groupId);
+  if (!group || targetId === group.adminId) return;
+  await prisma.membership.deleteMany({ where: { groupId, userId: targetId } });
+  revalidatePath(`/g/${groupId}`);
 }
 
 export async function createEvent(formData: FormData) {
@@ -109,6 +146,7 @@ export async function createEvent(formData: FormData) {
       flexMinutes,
       minQuorum,
       isPoll,
+      publicVotes: formData.get("publicVotes") !== "0",
       pollOptions: isPoll
         ? { create: optionDates.map((d) => ({ startsAt: d })) }
         : undefined,
@@ -125,7 +163,8 @@ export async function rsvp(formData: FormData) {
   if (!event || event.status === "CANCELLED") return;
   const userId = await ensureUser(String(formData.get("name") ?? ""));
 
-  const state = formData.get("state") === "OUT" ? ("OUT" as const) : ("IN" as const);
+  const raw = formData.get("state");
+  const state = raw === "OUT" ? ("OUT" as const) : raw === "MAYBE" ? ("MAYBE" as const) : ("IN" as const);
   const rawMin = formData.get("personalMin");
   const personalMin =
     rawMin == null ? undefined : Math.min(20, Math.max(0, Number(rawMin) || 0));
@@ -254,6 +293,23 @@ export async function setAvailability(formData: FormData) {
     create: { eventId, userId, from, until },
     update: { from, until },
   });
+  revalidatePath(`/e/${event.inviteToken}`);
+}
+
+export async function reopenEvent(formData: FormData) {
+  const eventId = String(formData.get("eventId") ?? "");
+  const userId = await getUserId();
+  if (!userId) return;
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event || event.status !== "CANCELLED") return;
+  await prisma.event.update({ where: { id: eventId }, data: { status: "PROPOSED" } });
+  // the reopener is in — otherwise the plan reopens empty and dies again
+  await prisma.rsvp.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    create: { eventId, userId, state: "IN" },
+    update: { state: "IN" },
+  });
+  await syncEventStatus(eventId);
   revalidatePath(`/e/${event.inviteToken}`);
 }
 

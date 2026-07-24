@@ -16,6 +16,8 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { ShareButton } from "@/components/ShareButton";
 import { RsvpPanel } from "@/components/RsvpPanel";
 import { NameField } from "@/components/NameField";
+import { SubmitButton } from "@/components/SubmitButton";
+import { reopenEvent } from "@/lib/actions";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -58,8 +60,14 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         <p className="max-w-xs text-sm" style={{ color: "var(--color-ink-2)" }}>
           {t("cancelledBlurb")}
         </p>
-        <div className="flex gap-3">
-          <Link href="/new" className="btn">{t("startNewPlan")}</Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          {user && (
+            <form action={reopenEvent}>
+              <input type="hidden" name="eventId" value={event.id} />
+              <SubmitButton className="btn">{t("reopenPlan")}</SubmitButton>
+            </form>
+          )}
+          <Link href="/new" className="btn btn-quiet">{t("startNewPlan")}</Link>
           <Link href="/" className="btn btn-quiet">{t("home")}</Link>
         </div>
       </main>
@@ -69,6 +77,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   const isCreator = user?.id === event.creatorId;
   const attendingSet = new Set(q.attending);
   const wasPoll = !event.isPoll && event.pollOptions.length > 0;
+  const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
   const nameById = new Map(event.availabilities.map((a) => [a.userId, a.user.name]));
 
   return (
@@ -118,6 +127,10 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             known={!!user}
             myState={mine?.state ?? null}
             myMin={mine?.personalMin ?? 0}
+            lastOneIn={
+              mine?.state === "IN" &&
+              !event.rsvps.some((r) => r.state === "IN" && r.userId !== user?.id)
+            }
           />
         </div>
       )}
@@ -125,11 +138,14 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       {event.isPoll && (
         <div className="card flex flex-col gap-3 p-5">
           <span className="label">{t("whenWorks")}</span>
+          {!event.publicVotes && (
+            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
+          )}
           {!user && (
             <form action={onboard} className="flex flex-col gap-3">
               <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
               <NameField known={false} />
-              <button className="btn self-start text-sm">{t("saveNameVote")}</button>
+              <SubmitButton className="btn self-start text-sm">{t("saveNameVote")}</SubmitButton>
             </form>
           )}
           {event.pollOptions.map((o) => {
@@ -141,8 +157,8 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 <div className="flex items-center gap-2">
                   <form action={vote} className="flex-1">
                     <input type="hidden" name="optionId" value={o.id} />
-                    <button
-                      className="chip w-full justify-between text-left"
+                    <SubmitButton
+                      className="chip w-full items-center justify-between text-left"
                       data-on={votedByMe}
                       disabled={!user}
                       style={{ display: "flex", opacity: user ? 1 : 0.6 }}
@@ -154,12 +170,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                           <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere.length })}</span>
                         )}
                       </span>
-                    </button>
+                    </SubmitButton>
                   </form>
                   {isCreator && (
                     <form action={lockOption}>
                       <input type="hidden" name="optionId" value={o.id} />
-                      <button className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</button>
+                      <SubmitButton className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</SubmitButton>
                     </form>
                   )}
                 </div>
@@ -172,9 +188,9 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     transition: "width 220ms var(--ease-out)",
                   }}
                 />
-                {o.votes.length > 0 && (
+                {event.publicVotes && o.votes.length > 0 && (
                   <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                    {o.votes.map((v) => v.user.name).join(", ")}
+                    {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
                   </span>
                 )}
               </div>
@@ -243,7 +259,9 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                       ? t("rIn")
                       : waiting
                         ? t("waitingFor", { n: r.personalMin })
-                        : t("rOut")}
+                        : r.state === "MAYBE"
+                          ? `${t("rMaybe")} 🤔`
+                          : t("rOut")}
                   </span>
                 </div>
               );

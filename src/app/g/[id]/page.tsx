@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
 import { ShareButton } from "@/components/ShareButton";
 import { getT } from "@/lib/i18n";
+import { GroupAdmin, KickableMember } from "@/components/GroupAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -83,12 +84,19 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
         <h2 className="label">{t("membersLabel")}</h2>
         <div className="flex flex-wrap gap-1.5">
           {group.memberships.map((m) => (
-            <span key={m.userId} className="chip cursor-default">
-              {m.user.name}{m.userId === userId ? ` (${t("you")})` : ""}
-            </span>
+            <KickableMember
+              key={m.userId}
+              groupId={group.id}
+              userId={m.userId}
+              name={m.user.name}
+              isSelf={m.userId === userId}
+              canKick={group.adminId === userId}
+            />
           ))}
         </div>
       </section>
+
+      {group.adminId === userId && <GroupAdmin groupId={group.id} name={group.name} />}
     </main>
   );
 }

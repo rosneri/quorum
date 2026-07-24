@@ -9,30 +9,38 @@ export function toLocalInputValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function localeTag(locale: string) {
+export function localeTag(locale: string) {
   return locale === "he" ? "he-IL" : "en-US";
 }
 
-function Strip({
+export function Strip({
   items,
   selected,
   onPick,
   isDisabled,
   ariaLabel,
+  trailing,
 }: {
   items: { key: string; label: string; sub?: string }[];
-  selected: string;
+  selected: string | string[];
   onPick: (key: string) => void;
   isDisabled?: (key: string) => boolean;
   ariaLabel: string;
+  trailing?: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // keep the selected pill centered — including when a quick-chip changes the value
+  const isOn = (key: string) =>
+    Array.isArray(selected) ? selected.includes(key) : key === selected;
+
+  // keep the selected pill centered — including when a quick-chip changes the value.
+  // multi-select strips manage their own scroll position.
   useEffect(() => {
+    if (Array.isArray(selected)) return;
     const el = ref.current?.querySelector<HTMLElement>('[data-on="true"]');
     el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-  }, [selected]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Array.isArray(selected) ? "" : selected]);
 
   return (
     <div ref={ref} className="strip" role="listbox" aria-label={ariaLabel}>
@@ -43,9 +51,9 @@ function Strip({
             key={it.key}
             type="button"
             role="option"
-            aria-selected={it.key === selected}
+            aria-selected={isOn(it.key)}
             className="chip strip-pill"
-            data-on={it.key === selected}
+            data-on={isOn(it.key)}
             disabled={disabled}
             onClick={() => onPick(it.key)}
           >
@@ -60,8 +68,93 @@ function Strip({
           </button>
         );
       })}
+      {trailing}
     </div>
   );
+}
+
+/**
+ * "Any other date" pill: last item of a day strip. Opens the native date
+ * picker; once a date outside the strip is chosen, the pill shows it selected.
+ */
+export function CustomDatePill({
+  selectedDay,
+  stripKeys,
+  onPick,
+}: {
+  selectedDay: string;
+  stripKeys: string[];
+  onPick: (dayKey: string) => void;
+}) {
+  const { t, locale } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isCustom = !stripKeys.includes(selectedDay);
+  const todayKey = toLocalInputValue(new Date()).slice(0, 10);
+  return (
+    <span className="strip-pill relative">
+      <button
+        type="button"
+        className="chip"
+        data-on={isCustom}
+        onClick={() => inputRef.current?.showPicker?.() ?? inputRef.current?.click()}
+      >
+        {isCustom
+          ? new Date(`${selectedDay}T12:00`).toLocaleDateString(localeTag(locale), {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : t("customDate")}
+      </button>
+      <input
+        ref={inputRef}
+        type="date"
+        tabIndex={-1}
+        aria-hidden
+        min={todayKey}
+        value={isCustom ? selectedDay : ""}
+        onChange={(e) => e.target.value && onPick(e.target.value)}
+        className="pointer-events-none absolute bottom-0 h-0 w-0 opacity-0"
+        style={{ insetInlineStart: 0 }}
+      />
+    </span>
+  );
+}
+
+export function buildDays(
+  tag: string,
+  labels: { today: string; tomorrow: string },
+  count = 14
+): { key: string; label: string; sub?: string }[] {
+  const out: { key: string; label: string; sub?: string }[] = [];
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  for (let i = 0; i < count; i++) {
+    const d = new Date(base.getTime() + i * 86_400_000);
+    const key = toLocalInputValue(d).slice(0, 10);
+    if (i === 0) out.push({ key, label: labels.today });
+    else if (i === 1) out.push({ key, label: labels.tomorrow });
+    else
+      out.push({
+        key,
+        label: d.toLocaleDateString(tag, { day: "numeric", month: "short" }),
+        sub: d.toLocaleDateString(tag, { weekday: "short" }),
+      });
+  }
+  return out;
+}
+
+export function buildTimes(tag: string): { key: string; label: string }[] {
+  const out: { key: string; label: string }[] = [];
+  const probe = new Date();
+  for (let m = 0; m < 24 * 60; m += 15) {
+    probe.setHours(Math.floor(m / 60), m % 60, 0, 0);
+    out.push({
+      key: toLocalInputValue(probe).slice(11),
+      label: probe.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" }),
+    });
+  }
+  return out;
 }
 
 /**
@@ -88,38 +181,10 @@ export function DateTimeField({
   const todayKey = toLocalInputValue(now).slice(0, 10);
   const nowTime = toLocalInputValue(now).slice(11);
 
-  const days = useMemo(() => {
-    const out: { key: string; label: string; sub?: string }[] = [];
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(base.getTime() + i * 86_400_000);
-      const key = toLocalInputValue(d).slice(0, 10);
-      if (i === 0) out.push({ key, label: t("today") });
-      else if (i === 1) out.push({ key, label: t("tomorrow") });
-      else
-        out.push({
-          key,
-          label: d.toLocaleDateString(tag, { day: "numeric", month: "short" }),
-          sub: d.toLocaleDateString(tag, { weekday: "short" }),
-        });
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tag, locale]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const days = useMemo(() => buildDays(tag, { today: t("today"), tomorrow: t("tomorrow") }), [tag, locale]);
 
-  const times = useMemo(() => {
-    const out: { key: string; label: string }[] = [];
-    const probe = new Date();
-    for (let m = 0; m < 24 * 60; m += 15) {
-      probe.setHours(Math.floor(m / 60), m % 60, 0, 0);
-      out.push({
-        key: toLocalInputValue(probe).slice(11),
-        label: probe.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" }),
-      });
-    }
-    return out;
-  }, [tag]);
+  const times = useMemo(() => buildTimes(tag), [tag]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -128,6 +193,13 @@ export function DateTimeField({
         selected={currentDay}
         onPick={(day) => onChange(`${day}T${currentTime}`)}
         ariaLabel={t("whenQ")}
+        trailing={
+          <CustomDatePill
+            selectedDay={currentDay}
+            stripKeys={days.map((d) => d.key)}
+            onPick={(day) => onChange(`${day}T${currentTime}`)}
+          />
+        }
       />
       <Strip
         items={times}

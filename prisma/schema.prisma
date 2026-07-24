@@ -22,6 +22,7 @@ model User {
 model Group {
   id          String   @id @default(cuid())
   name        String
+  adminId     String?
   inviteToken String   @unique @default(cuid())
   createdAt   DateTime @default(now())
 
@@ -59,6 +60,7 @@ model Event {
   status      EventStatus @default(PROPOSED)
   inviteToken String      @unique @default(cuid())
   isPoll      Boolean     @default(false)
+  publicVotes Boolean     @default(true)
   createdAt   DateTime    @default(now())
 
   group       Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
@@ -70,6 +72,7 @@ model Event {
 
 enum RsvpState {
   IN
+  MAYBE
   OUT
 }
 

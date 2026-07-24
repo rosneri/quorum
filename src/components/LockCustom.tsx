@@ -4,6 +4,7 @@ import { useState } from "react";
 import { lockCustomTime } from "@/lib/actions";
 import { useI18n } from "./I18nProvider";
 import { DateTimeField } from "./DateTimeField";
+import { SubmitButton } from "./SubmitButton";
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -28,7 +29,7 @@ export function LockCustom({ eventId }: { eventId: string }) {
       <input type="hidden" name="eventId" value={eventId} />
       <div className="w-full"><DateTimeField value={at} onChange={setAt} disallowPast /></div>
       <input type="hidden" name="startsAt" value={at ? new Date(at).toISOString() : ""} />
-      <button className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</button>
+      <SubmitButton className="btn btn-mint px-3 py-1.5 text-sm">{t("lockIn")}</SubmitButton>
     </form>
   );
 }

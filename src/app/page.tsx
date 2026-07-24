@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { SubmitButton } from "@/components/SubmitButton";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function Home() {
               autoComplete="given-name"
             />
           </div>
-          <button className="btn text-lg">{t("letsGo")}</button>
+          <SubmitButton className="btn text-lg">{t("letsGo")}</SubmitButton>
           <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
             {t("noPassword")}
           </p>

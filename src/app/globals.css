@@ -159,6 +159,8 @@ a.card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2p
 
 /* ---- Horizontal snap strips (date/time picker) ---- */
 .strip {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -184,6 +186,20 @@ a.card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2p
 }
 .qdot[data-fill="true"] { background: var(--color-accent-2); transform: scale(1.12); }
 .qdot[data-pop="true"] { background: var(--color-accent-3); }
+
+/* ---- Pending spinner ---- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  display: inline-block;
+  animation: spin 700ms linear infinite;
+  flex-shrink: 0;
+}
+[data-pending="true"] { opacity: 0.7; }
 
 @keyframes pop-in {
   0% { transform: scale(0.6); opacity: 0; }

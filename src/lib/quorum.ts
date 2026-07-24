@@ -1,6 +1,6 @@
 export type RsvpLike = {
   userId: string;
-  state: "IN" | "OUT";
+  state: "IN" | "MAYBE" | "OUT";
   personalMin: number;
 };
 

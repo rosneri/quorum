@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import { createGroup } from "@/lib/actions";
 import { NameField } from "@/components/NameField";
 import { getT } from "@/lib/i18n";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function NewGroup() {
             className="field text-lg"
           />
         </div>
-        <button className="btn text-lg">{t("createGroup")}</button>
+        <SubmitButton className="btn text-lg">{t("createGroup")}</SubmitButton>
         <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
           {t("groupLinkHint")}
         </p>

@@ -5,6 +5,7 @@ import { setAvailability } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
 import { DateTimeField } from "./DateTimeField";
+import { SubmitButton } from "./SubmitButton";
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -62,9 +63,9 @@ export function AvailabilityPanel({
       </div>
       <input type="hidden" name="from" value={from ? new Date(from).toISOString() : ""} />
       <input type="hidden" name="until" value={range && until ? new Date(until).toISOString() : ""} />
-      <button className="btn btn-quiet self-start text-sm">
+      <SubmitButton className="btn btn-quiet self-start text-sm">
         {mine ? t("updateAvailability") : t("saveAvailability")}
-      </button>
+      </SubmitButton>
     </form>
   );
 }
