@@ -149,14 +149,10 @@ export async function createEvent(formData: FormData) {
       // creator is in by default — one less tap
       rsvps: { create: { userId, state: "IN" } },
     },
-    include: { pollOptions: true },
   });
-  // creator proposes every time they picked — count them in on all of them
-  if (multi) {
-    await prisma.pollVote.createMany({
-      data: event.pollOptions.map((o) => ({ optionId: o.id, userId })),
-    });
-  }
+  // For a multi-time plan the creator still picks which of their proposed
+  // times actually work for them — no auto-votes. (A single-time plan needs
+  // no vote: being IN implies the sole time works.)
   await syncEventStatus(event.id);
   redirect(`/e/${event.inviteToken}`);
 }
