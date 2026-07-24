@@ -277,6 +277,38 @@ export async function removeAvailability(formData: FormData) {
   revalidatePath(`/e/${entry.event.inviteToken}`);
 }
 
+/** Owner accepts a guest-suggested time — clears the "?" so it reads as theirs. */
+export async function confirmOption(formData: FormData) {
+  const optionId = String(formData.get("optionId") ?? "");
+  const userId = await getUserId();
+  if (!userId) return;
+  const option = await prisma.pollOption.findUnique({
+    where: { id: optionId },
+    include: { event: true },
+  });
+  if (!option || option.event.creatorId !== userId || option.event.status === "CANCELLED") return;
+  await prisma.pollOption.update({ where: { id: optionId }, data: { suggested: false } });
+  await syncEventStatus(option.eventId);
+  revalidatePath(`/e/${option.event.inviteToken}`);
+}
+
+/** Owner rejects a candidate time — drops the option and its votes. */
+export async function removeOption(formData: FormData) {
+  const optionId = String(formData.get("optionId") ?? "");
+  const userId = await getUserId();
+  if (!userId) return;
+  const option = await prisma.pollOption.findUnique({
+    where: { id: optionId },
+    include: { event: true },
+  });
+  if (!option || option.event.creatorId !== userId || option.event.status === "CANCELLED") return;
+  // never leave a poll with zero times to choose from
+  if ((await prisma.pollOption.count({ where: { eventId: option.eventId } })) <= 1) return;
+  await prisma.pollOption.delete({ where: { id: optionId } });
+  await syncEventStatus(option.eventId);
+  revalidatePath(`/e/${option.event.inviteToken}`);
+}
+
 export async function editEvent(formData: FormData) {
   const userId = await getUserId();
   if (!userId) return;
