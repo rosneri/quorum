@@ -23,7 +23,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
   const dir = locale === "he" ? "rtl" : "ltr";
   const when = event.startsAt
     ? formatWhen(event.startsAt, event.flexMinutes, locale, dict)
-    : t("voteOnTimeBelow");
+    : t("ogVoteOnTime");
   const subtitle = event.group
     ? `${when} · ${event.group.name} · ${t("by", { name: event.creator.name })}`
     : `${when} · ${t("by", { name: event.creator.name })}`;

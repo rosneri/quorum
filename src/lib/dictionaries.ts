@@ -98,6 +98,7 @@ const en = {
 
   // event page
   voteOnTimeBelow: "Vote on a time below",
+  ogVoteOnTime: "Help pick a time",
   by: "by {name}",
   decidedByVote: "📌 Time decided by vote",
   timeUpdated: "🕐 Time updated",
@@ -300,6 +301,7 @@ const he: Dict = {
   stLive: "עכשיו",
 
   voteOnTimeBelow: "מצביעים על שעה למטה",
+  ogVoteOnTime: "עוזרים לבחור שעה",
   by: "של {name}",
   decidedByVote: "📌 השעה נקבעה בהצבעה",
   timeUpdated: "🕐 הזמן עודכן",

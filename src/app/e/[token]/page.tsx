@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps<"/e/[token]">): Pro
   const title = `${event.emoji ? `${event.emoji} ` : ""}${event.title}`;
   const when = event.startsAt
     ? formatWhen(event.startsAt, event.flexMinutes, locale, dict)
-    : t("voteOnTimeBelow");
+    : t("ogVoteOnTime");
   const bits = [when];
   if (event.group) bits.push(event.group.name);
   bits.push(t("by", { name: event.creator.name }));
