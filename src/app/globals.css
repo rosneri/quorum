@@ -149,6 +149,31 @@ a.card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2p
   border-color: var(--color-accent-deep);
 }
 
+/* ---- Icon buttons (calendar links) ---- */
+.cal-icon {
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.cal-icon:hover { background: var(--color-paper-3) !important; transform: translateY(-2px); }
+.cal-icon:active { transform: translateY(1px); }
+.cal-icon:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---- Horizontal snap strips (date/time picker) ---- */
+.strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: 2px;
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+.strip::-webkit-scrollbar { display: none; }
+.strip-pill {
+  scroll-snap-align: center;
+  flex-shrink: 0;
+}
+.strip-pill:disabled { opacity: 0.35; pointer-events: none; }
+
 /* ---- Quorum meter dots ---- */
 .qdot {
   width: 14px;
