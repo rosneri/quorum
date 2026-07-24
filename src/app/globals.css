@@ -207,7 +207,14 @@ a.card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2p
 }
 .pop-in { animation: pop-in var(--dur-med) var(--ease-spring) both; }
 
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+[data-live="true"] { animation: live-pulse 1.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .btn, .card, .chip, .qdot { transition: none; }
   .pop-in { animation: none; }
+  [data-live="true"] { animation: none; }
 }

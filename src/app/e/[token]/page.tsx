@@ -19,7 +19,7 @@ import { NameField } from "@/components/NameField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { reopenEvent, removeAvailability } from "@/lib/actions";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { isPast } from "@/lib/status";
+import { isPast, isLive } from "@/lib/status";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -78,6 +78,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
   const isCreator = user?.id === event.creatorId;
   const past = isPast(event);
+  const live = isLive(event);
   const wasEdited = !!event.editedAt && event.editedAt.getTime() > event.createdAt.getTime();
   const attendingSet = new Set(q.attending);
   const wasPoll = !event.isPoll && event.pollOptions.length > 0;
@@ -90,7 +91,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
-          <StatusChip status={event.status} isPoll={event.isPoll} isPast={past} />
+          <StatusChip status={event.status} isPoll={event.isPoll} isPast={past} isLive={live} />
         </div>
         <LocaleToggle />
       </header>
@@ -135,6 +136,13 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           )}
         </div>
       </div>
+
+      {live && (
+        <div className="card flex flex-col gap-1 p-5 pop-in" style={{ background: "var(--color-mint)" }}>
+          <span className="text-lg font-bold">🎉 {t("happeningNow")}</span>
+          <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>{t("happeningBlurb")}</p>
+        </div>
+      )}
 
       {past && (
         <div className="card flex flex-col gap-1 p-5">

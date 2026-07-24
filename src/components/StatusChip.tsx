@@ -9,18 +9,36 @@ const styles = {
   CANCELLED: { bg: "var(--color-paper-3)", key: "stCancelled" },
   DONE: { bg: "var(--color-paper-3)", key: "stDone" },
   POLL: { bg: "var(--color-accent-2)", key: "stVoting" },
+  LIVE: { bg: "var(--color-mint)", key: "stLive" },
 } as const;
 
-export function StatusChip({ status, isPoll, isPast }: { status: EventStatus; isPoll?: boolean; isPast?: boolean }) {
+export function StatusChip({
+  status,
+  isPoll,
+  isPast,
+  isLive,
+}: {
+  status: EventStatus;
+  isPoll?: boolean;
+  isPast?: boolean;
+  isLive?: boolean;
+}) {
   const { t } = useI18n();
+  const active = status !== "CANCELLED";
   const s =
-    isPast && status !== "CANCELLED"
-      ? styles.DONE
-      : isPoll && status === "PROPOSED"
-        ? styles.POLL
-        : styles[status];
+    isLive && active
+      ? styles.LIVE
+      : isPast && active
+        ? styles.DONE
+        : isPoll && status === "PROPOSED"
+          ? styles.POLL
+          : styles[status];
   return (
-    <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: s.bg }}>
+    <span
+      className="rounded-full px-2.5 py-1 text-xs font-bold"
+      style={{ background: s.bg }}
+      data-live={isLive && active ? true : undefined}
+    >
       {t(s.key)}
     </span>
   );

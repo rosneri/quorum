@@ -55,6 +55,7 @@ const en = {
   stCancelled: "Cancelled",
   stDone: "Done",
   stVoting: "Voting",
+  stLive: "Now",
 
   // event page
   voteOnTimeBelow: "Vote on a time below",
@@ -66,6 +67,8 @@ const en = {
   saveChanges: "Save changes",
   behindUs: "This one's behind us",
   behindUsBlurb: "This plan has already happened — here's who was in.",
+  happeningNow: "Happening now",
+  happeningBlurb: "This plan is underway right now — hope you made it!",
   pickTwoTimes: "Pick at least two times to let people vote.",
   meterMaybeSolo: "Switch to \"I'm in\" to start it",
   addToCalendar: "📅 Add to calendar",
@@ -211,6 +214,7 @@ const he: Dict = {
   stCancelled: "בוטל",
   stDone: "הסתיים",
   stVoting: "בהצבעה",
+  stLive: "עכשיו",
 
   voteOnTimeBelow: "מצביעים על שעה למטה",
   by: "של {name}",
@@ -221,6 +225,8 @@ const he: Dict = {
   saveChanges: "שמירת שינויים",
   behindUs: "זה כבר מאחורינו",
   behindUsBlurb: "התוכנית הזאת כבר קרתה — הנה מי שהיה בפנים.",
+  happeningNow: "קורה עכשיו",
+  happeningBlurb: "התוכנית הזאת קורית ממש עכשיו — מקווים שהגעתם!",
   pickTwoTimes: "בחרו לפחות שתי שעות כדי לאפשר הצבעה.",
   meterMaybeSolo: "עברו ל'אני בפנים' כדי להתחיל",
   addToCalendar: "📅 הוספה ליומן",

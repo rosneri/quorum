@@ -1,19 +1,9 @@
 import { prisma } from "./db";
 import { resolveQuorum } from "./quorum";
 
-/** How long after an event's window a timed plan lingers before it's "past". */
-export const PAST_GRACE_MS = 3 * 3_600_000;
-
-/** A timed plan is behind us once its start (+ flex + grace) has passed. Polls never count. */
-export function isPast(event: {
-  isPoll: boolean;
-  startsAt: Date | null;
-  flexMinutes: number | null;
-}, now: number = Date.now()): boolean {
-  if (event.isPoll || !event.startsAt) return false;
-  const end = event.startsAt.getTime() + (event.flexMinutes ?? 0) * 60_000 + PAST_GRACE_MS;
-  return now >= end;
-}
+// Re-export the pure time-state helpers so existing `@/lib/status` importers
+// keep working; the implementations live in a DB-free module for testability.
+export { PAST_GRACE_MS, isPast, isLive } from "./eventTime";
 
 /** Recompute PROPOSED/CONFIRMED from rsvps; never touches CANCELLED/DONE. */
 export async function syncEventStatus(eventId: string) {

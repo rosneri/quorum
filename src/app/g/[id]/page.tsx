@@ -11,7 +11,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
 import { leaveGroup } from "@/lib/actions";
-import { PAST_GRACE_MS } from "@/lib/status";
+import { PAST_GRACE_MS, isLive } from "@/lib/status";
 import { getT } from "@/lib/i18n";
 import { GroupAdmin, KickableMember, LeaveGroupButton } from "@/components/GroupAdmin";
 
@@ -78,7 +78,7 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
                 <span className="text-lg font-bold">
                   {e.emoji ? `${e.emoji} ` : ""}{e.title}
                 </span>
-                <StatusChip status={e.status} isPoll={e.isPoll} />
+                <StatusChip status={e.status} isPoll={e.isPoll} isLive={isLive(e)} />
               </div>
               {e.startsAt && (
                 <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
