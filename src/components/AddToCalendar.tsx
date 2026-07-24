@@ -25,11 +25,11 @@ export function AddToCalendar({
   )}`;
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <a href={`/e/${token}/ics`} className="chip" download>
+    <div className="flex shrink-0 flex-col items-stretch gap-1.5">
+      <a href={`/e/${token}/ics`} className="chip text-xs" download>
         {t("addToCalendar")}
       </a>
-      <a href={google} target="_blank" rel="noreferrer" className="chip">
+      <a href={google} target="_blank" rel="noreferrer" className="chip text-xs text-center">
         {t("googleCalendar")}
       </a>
     </div>

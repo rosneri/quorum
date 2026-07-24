@@ -80,9 +80,18 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       </header>
 
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-extrabold tracking-tight">
-          {event.emoji ? `${event.emoji} ` : ""}{event.title}
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {event.emoji ? `${event.emoji} ` : ""}{event.title}
+          </h1>
+          {!event.isPoll && event.startsAt && (
+            <AddToCalendar
+              token={event.inviteToken}
+              title={`${event.emoji ? event.emoji + " " : ""}${event.title}`}
+              startsAtIso={event.startsAt.toISOString()}
+            />
+          )}
+        </div>
         <p className="text-base" style={{ color: "var(--color-ink-2)" }}>
           {event.isPoll ? (
             t("voteOnTimeBelow")
@@ -100,14 +109,6 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           </span>
         )}
       </div>
-
-      {!event.isPoll && event.startsAt && (
-        <AddToCalendar
-          token={event.inviteToken}
-          title={`${event.emoji ? event.emoji + " " : ""}${event.title}`}
-          startsAtIso={event.startsAt.toISOString()}
-        />
-      )}
 
       {!event.isPoll && (
         <div className="card flex flex-col gap-4 p-5">
