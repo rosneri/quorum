@@ -236,6 +236,8 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 </div>
               );
             })}
+            {/* one more "option": none of these work — suggest your own time */}
+            {user && <AvailabilityPanel eventId={event.id} known={!!user} />}
           </div>
 
           {/* conditional participation — your picks only count once a time clears your threshold */}
@@ -279,11 +281,6 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                   </span>
                 </div>
               ))}
-            </div>
-          )}
-          {user && (
-            <div className="border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <AvailabilityPanel eventId={event.id} known={!!user} />
             </div>
           )}
         </div>

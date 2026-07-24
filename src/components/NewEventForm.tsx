@@ -30,7 +30,6 @@ export function NewEventForm({
           id="title"
           name="title"
           maxLength={80}
-          defaultValue="Coffee"
           placeholder={t("titlePlaceholder")}
           className="field text-lg"
         />

@@ -42,7 +42,13 @@ export function AvailabilityPanel({ eventId, known }: { eventId: string; known: 
 
   if (!open) {
     return (
-      <button type="button" className="btn btn-quiet self-start text-sm" onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="chip w-full items-center justify-start gap-1.5 text-left"
+        style={{ display: "flex" }}
+        onClick={() => setOpen(true)}
+      >
+        <span aria-hidden>🕗</span>
         {t("suggestTime")}
       </button>
     );

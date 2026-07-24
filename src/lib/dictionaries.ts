@@ -28,7 +28,7 @@ const en = {
   // new plan
   newPlanTitle: "New plan",
   whatsThePlan: "What's the plan?",
-  titlePlaceholder: "Coffee at Nira's",
+  titlePlaceholder: "Coffee",
   whoInvited: "Who's invited?",
   anyoneWithLink: "Anyone with the link",
   whenQ: "When?",
@@ -192,7 +192,7 @@ const he: Dict = {
 
   newPlanTitle: "תוכנית חדשה",
   whatsThePlan: "מה התוכנית?",
-  titlePlaceholder: "קפה אצל נירה",
+  titlePlaceholder: "קפה",
   whoInvited: "מי מוזמנים?",
   anyoneWithLink: "כל מי שיש לו את הקישור",
   whenQ: "מתי?",
