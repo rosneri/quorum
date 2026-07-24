@@ -1,6 +1,10 @@
 export type DayLabels = { today: string; tomorrow: string; yesterday: string };
 
-/** The day part of a timestamp: today/tomorrow/yesterday, else a short date. */
+/**
+ * The day part of a timestamp. Today/tomorrow/yesterday keep the relative word
+ * but also carry the actual date ("Today, 5 Mar") so a glanced list item is
+ * never ambiguous; other days show weekday + date.
+ */
 export function formatDayLabel(date: Date, locale: string, labels: DayLabels): string {
   const now = new Date();
   const startDay = new Date(date);
@@ -9,14 +13,21 @@ export function formatDayLabel(date: Date, locale: string, labels: DayLabels): s
   today.setHours(0, 0, 0, 0);
   const diffDays = Math.round((startDay.getTime() - today.getTime()) / 86_400_000);
 
-  if (diffDays === 0) return labels.today;
-  if (diffDays === 1) return labels.tomorrow;
-  if (diffDays === -1) return labels.yesterday;
+  const withYear = date.getFullYear() !== now.getFullYear() ? "numeric" : undefined;
+  const shortDate = date.toLocaleDateString(locale, {
+    month: "short",
+    day: "numeric",
+    year: withYear,
+  });
+
+  if (diffDays === 0) return `${labels.today}, ${shortDate}`;
+  if (diffDays === 1) return `${labels.tomorrow}, ${shortDate}`;
+  if (diffDays === -1) return `${labels.yesterday}, ${shortDate}`;
   return date.toLocaleDateString(locale, {
     weekday: "short",
     month: "short",
     day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    year: withYear,
   });
 }
 

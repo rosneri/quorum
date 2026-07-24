@@ -4,9 +4,7 @@ import { prisma } from "@/lib/db";
 import { onboard } from "@/lib/actions";
 import { resolveQuorum } from "@/lib/quorum";
 import { planTiming } from "@/lib/planTiming";
-import { QuorumMeter } from "@/components/QuorumMeter";
-import { StatusChip } from "@/components/StatusChip";
-import { PlanTiming } from "@/components/PlanTiming";
+import { PlanCard } from "@/components/PlanCard";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -168,40 +166,33 @@ export default async function Home() {
           const suggestedCount =
             e.creatorId === user.id ? e.pollOptions.filter((o) => o.suggested).length : 0;
           return (
-            <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-lg font-bold">
-                  {e.emoji ? `${e.emoji} ` : ""}{e.title}
-                </span>
-                <StatusChip status={e.status} isPoll={e.isPoll} isLive={isLive(e)} />
-              </div>
-              {suggestedCount > 0 && (
-                <span
-                  className="self-start rounded-full px-2.5 py-0.5 text-xs font-bold"
-                  style={{ background: "var(--color-accent-2)", color: "white" }}
-                >
-                  🔔 {t("newSuggestions", { n: suggestedCount })}
-                </span>
-              )}
-              <div className="flex flex-col gap-1">
-                <PlanTiming
-                  chosenIso={timing.chosen?.toISOString()}
-                  flexMinutes={e.flexMinutes}
-                  rangeStartIso={timing.rangeStart?.toISOString()}
-                  rangeEndIso={timing.rangeEnd?.toISOString()}
-                  leadingIso={timing.leading?.toISOString()}
-                  multi={timing.multi}
-                />
-                {e.group && (
-                  <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                    {e.group.name}
+            <PlanCard
+              key={e.id}
+              href={`/e/${e.inviteToken}`}
+              emoji={e.emoji}
+              title={e.title}
+              status={e.status}
+              isPoll={e.isPoll}
+              isLive={isLive(e)}
+              chosenIso={timing.chosen?.toISOString()}
+              flexMinutes={e.flexMinutes}
+              rangeStartIso={timing.rangeStart?.toISOString()}
+              rangeEndIso={timing.rangeEnd?.toISOString()}
+              leadingIso={timing.leading?.toISOString()}
+              multi={timing.multi}
+              groupName={e.group?.name}
+              meter={e.isPoll ? null : { attending: q.attending.length, confirmed: q.confirmed }}
+              badge={
+                suggestedCount > 0 ? (
+                  <span
+                    className="self-start rounded-full px-2.5 py-0.5 text-xs font-bold"
+                    style={{ background: "var(--color-accent-2)", color: "white" }}
+                  >
+                    🔔 {t("newSuggestions", { n: suggestedCount })}
                   </span>
-                )}
-              </div>
-              {!e.isPoll && (
-                <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
-              )}
-            </Link>
+                ) : undefined
+              }
+            />
           );
         })}
       </section>
@@ -235,38 +226,24 @@ export default async function Home() {
             const declined = myState(e) === "OUT";
             const timing = planTiming(e);
             return (
-              <Link
+              <PlanCard
                 key={e.id}
                 href={`/e/${e.inviteToken}`}
-                className="card flex flex-col gap-2 p-4"
-                style={{ opacity: 0.65 }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-lg font-bold">
-                    {e.emoji ? `${e.emoji} ` : ""}{e.title}
-                  </span>
-                  {declined ? (
-                    <span className="chip">{t("youDeclined")}</span>
-                  ) : (
-                    <StatusChip status={e.status} isPoll={e.isPoll} isLive={false} />
-                  )}
-                </div>
-                <div className="flex flex-col gap-1">
-                  <PlanTiming
-                    chosenIso={timing.chosen?.toISOString()}
-                    flexMinutes={e.flexMinutes}
-                    rangeStartIso={timing.rangeStart?.toISOString()}
-                    rangeEndIso={timing.rangeEnd?.toISOString()}
-                    leadingIso={timing.leading?.toISOString()}
-                    multi={timing.multi}
-                  />
-                  {e.group && (
-                    <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                      {e.group.name}
-                    </span>
-                  )}
-                </div>
-              </Link>
+                emoji={e.emoji}
+                title={e.title}
+                status={e.status}
+                isPoll={e.isPoll}
+                isPast={isPast(e)}
+                chosenIso={timing.chosen?.toISOString()}
+                flexMinutes={e.flexMinutes}
+                rangeStartIso={timing.rangeStart?.toISOString()}
+                rangeEndIso={timing.rangeEnd?.toISOString()}
+                leadingIso={timing.leading?.toISOString()}
+                multi={timing.multi}
+                groupName={e.group?.name}
+                muted
+                statusSlot={declined ? <span className="chip">{t("youDeclined")}</span> : undefined}
+              />
             );
           })}
         </section>

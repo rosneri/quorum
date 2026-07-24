@@ -41,25 +41,34 @@ export function PlanTiming({
   const labels = { today: t("today"), tomorrow: t("tomorrow"), yesterday: t("yesterday") };
   const l = tag(locale);
 
+  // Decided time — the headline of the card.
   if (chosenIso) {
     return (
-      <span className="text-sm" style={muted}>
+      <span className="flex items-center gap-1.5 text-sm font-semibold">
+        <span aria-hidden>🗓️</span>
         {formatWhen(new Date(chosenIso), flexMinutes, l, labels)}
       </span>
     );
   }
 
+  // Still a poll: show the span of candidate days, then the live front-runner.
   return (
-    <span className="flex flex-col gap-0.5 text-sm" style={muted}>
+    <span className="flex flex-col items-start gap-1 text-sm">
       {multi && rangeStartIso && rangeEndIso && (
-        <span>{formatRange(new Date(rangeStartIso), new Date(rangeEndIso), l, labels)}</span>
+        <span className="flex items-center gap-1.5" style={muted}>
+          <span aria-hidden>🗳️</span>
+          {formatRange(new Date(rangeStartIso), new Date(rangeEndIso), l, labels)}
+        </span>
       )}
       {leadingIso ? (
-        <span>
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+          style={{ background: "var(--color-accent-2)", color: "white" }}
+        >
           🔥 {t("leadingTime")} · {formatWhen(new Date(leadingIso), flexMinutes, l, labels)}
         </span>
       ) : (
-        <span>{t("votingOnTime")}</span>
+        <span style={muted}>{t("votingOnTime")}</span>
       )}
     </span>
   );

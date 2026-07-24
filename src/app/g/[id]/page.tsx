@@ -4,9 +4,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveQuorum } from "@/lib/quorum";
 import { planTiming } from "@/lib/planTiming";
-import { QuorumMeter } from "@/components/QuorumMeter";
-import { StatusChip } from "@/components/StatusChip";
-import { PlanTiming } from "@/components/PlanTiming";
+import { PlanCard } from "@/components/PlanCard";
 import { ShareButton } from "@/components/ShareButton";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
@@ -91,25 +89,22 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
           const q = resolveQuorum(e.rsvps);
           const timing = planTiming(e);
           return (
-            <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-lg font-bold">
-                  {e.emoji ? `${e.emoji} ` : ""}{e.title}
-                </span>
-                <StatusChip status={e.status} isPoll={e.isPoll} isLive={isLive(e)} />
-              </div>
-              <PlanTiming
-                chosenIso={timing.chosen?.toISOString()}
-                flexMinutes={e.flexMinutes}
-                rangeStartIso={timing.rangeStart?.toISOString()}
-                rangeEndIso={timing.rangeEnd?.toISOString()}
-                leadingIso={timing.leading?.toISOString()}
-                multi={timing.multi}
-              />
-              {!e.isPoll && (
-                <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
-              )}
-            </Link>
+            <PlanCard
+              key={e.id}
+              href={`/e/${e.inviteToken}`}
+              emoji={e.emoji}
+              title={e.title}
+              status={e.status}
+              isPoll={e.isPoll}
+              isLive={isLive(e)}
+              chosenIso={timing.chosen?.toISOString()}
+              flexMinutes={e.flexMinutes}
+              rangeStartIso={timing.rangeStart?.toISOString()}
+              rangeEndIso={timing.rangeEnd?.toISOString()}
+              leadingIso={timing.leading?.toISOString()}
+              multi={timing.multi}
+              meter={e.isPoll ? null : { attending: q.attending.length, confirmed: q.confirmed }}
+            />
           );
         })}
       </section>
