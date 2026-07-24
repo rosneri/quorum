@@ -5,9 +5,13 @@ import { prisma } from "@/lib/db";
 import { resolveQuorum } from "@/lib/quorum";
 import { vote, lockOption, onboard } from "@/lib/actions";
 import { CancelButton } from "@/components/CancelButton";
+import { AvailabilityPanel } from "@/components/AvailabilityPanel";
+import { LockCustom } from "@/components/LockCustom";
+import { AddToCalendar } from "@/components/AddToCalendar";
+import { availableUserIds } from "@/lib/availability";
 import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
-import { When } from "@/components/When";
+import { When, TimeOnly } from "@/components/When";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ShareButton } from "@/components/ShareButton";
 import { RsvpPanel } from "@/components/RsvpPanel";
@@ -26,6 +30,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         group: true,
         rsvps: { include: { user: true }, orderBy: { updatedAt: "asc" } },
         pollOptions: { include: { votes: { include: { user: true } } }, orderBy: { startsAt: "asc" } },
+        availabilities: { include: { user: true }, orderBy: { from: "asc" } },
       },
     }),
   ]);
@@ -35,6 +40,8 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   const mine = user ? event.rsvps.find((r) => r.userId === user.id) : undefined;
   const isCreator = user?.id === event.creatorId;
   const attendingSet = new Set(q.attending);
+  const wasPoll = !event.isPoll && event.pollOptions.length > 0;
+  const nameById = new Map(event.availabilities.map((a) => [a.userId, a.user.name]));
 
   return (
     <main className="flex flex-col gap-6">
@@ -56,7 +63,23 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           ) : null}
           {event.group ? ` · ${event.group.name}` : ""} · by {event.creator.name}
         </p>
+        {wasPoll && event.startsAt && (
+          <span
+            className="self-start rounded-full px-2.5 py-1 text-xs font-bold pop-in"
+            style={{ background: "var(--color-accent-2)" }}
+          >
+            📌 Time decided by vote
+          </span>
+        )}
       </div>
+
+      {!event.isPoll && event.startsAt && event.status !== "CANCELLED" && (
+        <AddToCalendar
+          token={event.inviteToken}
+          title={`${event.emoji ? event.emoji + " " : ""}${event.title}`}
+          startsAtIso={event.startsAt.toISOString()}
+        />
+      )}
 
       {!event.isPoll && event.status !== "CANCELLED" && (
         <div className="card flex flex-col gap-4 p-5">
@@ -83,6 +106,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           {event.pollOptions.map((o) => {
             const votedByMe = user ? o.votes.some((v) => v.userId === user.id) : false;
             const top = Math.max(1, ...event.pollOptions.map((p) => p.votes.length));
+            const freeHere = availableUserIds(event.availabilities, o.startsAt);
             return (
               <div key={o.id} className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -95,7 +119,12 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                       style={{ display: "flex", opacity: user ? 1 : 0.6 }}
                     >
                       <When iso={o.startsAt.toISOString()} />
-                      <span className="font-bold">{o.votes.length} ✋</span>
+                      <span className="font-bold">
+                        {o.votes.length} ✋
+                        {freeHere.length > 0 && (
+                          <span style={{ color: "var(--color-mint-deep)" }}> · {freeHere.length} free</span>
+                        )}
+                      </span>
                     </button>
                   </form>
                   {isCreator && (
@@ -122,10 +151,48 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
               </div>
             );
           })}
+          {event.availabilities.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
+              <span className="label">Free when</span>
+              {event.availabilities.map((a) => (
+                <div key={a.userId} className="flex items-center justify-between text-sm">
+                  <span className="font-semibold">
+                    {nameById.get(a.userId)}
+                    {a.userId === user?.id ? " (you)" : ""}
+                  </span>
+                  <span style={{ color: "var(--color-ink-2)" }}>
+                    <When iso={a.from.toISOString()} />
+                    {a.until && (
+                      <>
+                        {" – "}
+                        <TimeOnly iso={a.until.toISOString()} />
+                      </>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {user && (
+            <div className="border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
+              <AvailabilityPanel
+                eventId={event.id}
+                known={!!user}
+                mine={(() => {
+                  const m = event.availabilities.find((a) => a.userId === user.id);
+                  return m ? { from: m.from.toISOString(), until: m.until?.toISOString() ?? null } : null;
+                })()}
+              />
+            </div>
+          )}
           {isCreator && (
-            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-              You created this — lock in the winning time when the votes are in.
-            </p>
+            <>
+              <LockCustom eventId={event.id} />
+              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+                You created this — lock in the winning time when the votes are in. Everyone who
+                said that time works will be counted in automatically.
+              </p>
+            </>
           )}
         </div>
       )}

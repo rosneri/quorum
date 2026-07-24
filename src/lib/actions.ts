@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "./db";
 import { getUserId, setUserCookie } from "./auth";
 import { syncEventStatus } from "./status";
+import { availableUserIds } from "./availability";
 
 async function ensureUser(name?: string): Promise<string> {
   const existing = await getUserId();
@@ -150,13 +151,26 @@ export async function vote(formData: FormData) {
   revalidatePath(`/e/${option.event.inviteToken}`);
 }
 
+/** Everyone who signalled the locked time works for them gets RSVP'd IN (existing answers kept). */
+async function autoRsvp(eventId: string, lockedAt: Date, voterIds: string[]) {
+  const avails = await prisma.availability.findMany({ where: { eventId } });
+  const ids = new Set([...voterIds, ...availableUserIds(avails, lockedAt)]);
+  for (const userId of ids) {
+    await prisma.rsvp.upsert({
+      where: { eventId_userId: { eventId, userId } },
+      create: { eventId, userId, state: "IN" },
+      update: {},
+    });
+  }
+}
+
 export async function lockOption(formData: FormData) {
   const optionId = String(formData.get("optionId") ?? "");
   const userId = await getUserId();
   if (!userId) return;
   const option = await prisma.pollOption.findUnique({
     where: { id: optionId },
-    include: { event: true },
+    include: { event: true, votes: true },
   });
   if (!option || !option.event.isPoll) return;
   if (option.event.creatorId !== userId) return;
@@ -165,8 +179,53 @@ export async function lockOption(formData: FormData) {
     where: { id: option.eventId },
     data: { isPoll: false, startsAt: option.startsAt },
   });
+  await autoRsvp(option.eventId, option.startsAt, option.votes.map((v) => v.userId));
   await syncEventStatus(option.eventId);
   revalidatePath(`/e/${option.event.inviteToken}`);
+}
+
+export async function lockCustomTime(formData: FormData) {
+  const userId = await getUserId();
+  if (!userId) return;
+  const eventId = String(formData.get("eventId") ?? "");
+  const at = new Date(String(formData.get("startsAt") ?? ""));
+  if (isNaN(at.getTime()) || at.getTime() < Date.now() - 15 * 60_000) return;
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event || !event.isPoll || event.creatorId !== userId) return;
+
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { isPoll: false, startsAt: at },
+  });
+  await autoRsvp(eventId, at, []);
+  await syncEventStatus(eventId);
+  revalidatePath(`/e/${event.inviteToken}`);
+}
+
+export async function setAvailability(formData: FormData) {
+  const eventId = String(formData.get("eventId") ?? "");
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event || !event.isPoll || event.status === "CANCELLED") return;
+  const userId = await ensureUser(String(formData.get("name") ?? ""));
+
+  if (formData.get("clear") === "1") {
+    await prisma.availability.deleteMany({ where: { eventId, userId } });
+    revalidatePath(`/e/${event.inviteToken}`);
+    return;
+  }
+
+  const from = new Date(String(formData.get("from") ?? ""));
+  if (isNaN(from.getTime())) return;
+  const untilRaw = String(formData.get("until") ?? "");
+  let until: Date | null = untilRaw ? new Date(untilRaw) : null;
+  if (until && (isNaN(until.getTime()) || until.getTime() <= from.getTime())) until = null;
+
+  await prisma.availability.upsert({
+    where: { eventId_userId: { eventId, userId } },
+    create: { eventId, userId, from, until },
+    update: { from, until },
+  });
+  revalidatePath(`/e/${event.inviteToken}`);
 }
 
 export async function cancelEvent(formData: FormData) {

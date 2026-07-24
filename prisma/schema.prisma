@@ -12,10 +12,11 @@ model User {
   name      String
   createdAt DateTime @default(now())
 
-  memberships Membership[]
-  events      Event[]
-  rsvps       Rsvp[]
-  pollVotes   PollVote[]
+  memberships    Membership[]
+  events         Event[]
+  rsvps          Rsvp[]
+  pollVotes      PollVote[]
+  availabilities Availability[]
 }
 
 model Group {
@@ -62,8 +63,9 @@ model Event {
 
   group       Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  rsvps       Rsvp[]
-  pollOptions PollOption[]
+  rsvps          Rsvp[]
+  pollOptions    PollOption[]
+  availabilities Availability[]
 }
 
 enum RsvpState {
@@ -77,6 +79,20 @@ model Rsvp {
   state       RsvpState
   personalMin Int       @default(0)
   updatedAt   DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+// A person's stated availability for a poll event: a window (from–until)
+// or a specific moment (until = null).
+model Availability {
+  eventId String
+  userId  String
+  from    DateTime
+  until   DateTime?
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
