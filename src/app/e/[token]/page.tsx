@@ -38,6 +38,32 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
   const q = resolveQuorum(event.rsvps, event.minQuorum);
   const mine = user ? event.rsvps.find((r) => r.userId === user.id) : undefined;
+  if (event.status === "CANCELLED") {
+    return (
+      <main className="flex min-h-[75dvh] flex-col items-center justify-center gap-5 text-center">
+        <span className="text-6xl pop-in">🌧️</span>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-extrabold tracking-tight">This plan was called off</h1>
+          <p className="text-lg font-semibold" style={{ color: "var(--color-ink-2)" }}>
+            {event.emoji ? `${event.emoji} ` : ""}{event.title}
+          </p>
+          {event.startsAt && (
+            <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+              was set for <When iso={event.startsAt.toISOString()} flexMinutes={event.flexMinutes} />
+            </p>
+          )}
+        </div>
+        <p className="max-w-xs text-sm" style={{ color: "var(--color-ink-2)" }}>
+          Not enough people could make it this time. Next one&apos;s on you?
+        </p>
+        <div className="flex gap-3">
+          <Link href="/new" className="btn">Start a new plan</Link>
+          <Link href="/" className="btn btn-quiet">Home</Link>
+        </div>
+      </main>
+    );
+  }
+
   const isCreator = user?.id === event.creatorId;
   const attendingSet = new Set(q.attending);
   const wasPoll = !event.isPoll && event.pollOptions.length > 0;
@@ -73,7 +99,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         )}
       </div>
 
-      {!event.isPoll && event.startsAt && event.status !== "CANCELLED" && (
+      {!event.isPoll && event.startsAt && (
         <AddToCalendar
           token={event.inviteToken}
           title={`${event.emoji ? event.emoji + " " : ""}${event.title}`}
@@ -81,7 +107,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         />
       )}
 
-      {!event.isPoll && event.status !== "CANCELLED" && (
+      {!event.isPoll && (
         <div className="card flex flex-col gap-4 p-5">
           <QuorumMeter attending={q.attending.length} minQuorum={event.minQuorum} confirmed={q.confirmed} />
           <RsvpPanel
@@ -93,7 +119,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {event.isPoll && event.status !== "CANCELLED" && (
+      {event.isPoll && (
         <div className="card flex flex-col gap-3 p-5">
           <span className="label">When works? Tap all that do.</span>
           {!user && (
@@ -197,12 +223,6 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {event.status === "CANCELLED" && (
-        <div className="card p-5 text-center font-semibold" style={{ color: "var(--color-ink-2)" }}>
-          This plan was called off.
-        </div>
-      )}
-
       {!event.isPoll && event.rsvps.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="label">Who&apos;s in</h2>
@@ -232,7 +252,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       <div className="flex items-center gap-3">
         <ShareButton path={`/e/${event.inviteToken}`} title={event.title} />
-        {isCreator && event.status !== "CANCELLED" && <CancelButton eventId={event.id} />}
+        {isCreator && <CancelButton eventId={event.id} />}
       </div>
     </main>
   );

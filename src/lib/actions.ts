@@ -127,6 +127,26 @@ export async function rsvp(formData: FormData) {
     update: { state, ...(personalMin !== undefined ? { personalMin } : {}) },
   });
 
+  // The organizer bailing shouldn't kill the plan: hand it to someone who's
+  // still in; with nobody left, call it off.
+  if (state === "OUT" && event.creatorId === userId) {
+    const successor = await prisma.rsvp.findFirst({
+      where: { eventId, state: "IN", userId: { not: userId } },
+      orderBy: { updatedAt: "asc" },
+    });
+    if (successor) {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { creatorId: successor.userId },
+      });
+    } else {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { status: "CANCELLED" },
+      });
+    }
+  }
+
   await syncEventStatus(eventId);
   revalidatePath(`/e/${event.inviteToken}`);
 }
