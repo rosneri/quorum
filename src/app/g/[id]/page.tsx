@@ -3,17 +3,21 @@ import { notFound, redirect } from "next/navigation";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveQuorum } from "@/lib/quorum";
+import { planTiming } from "@/lib/planTiming";
 import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
-import { When } from "@/components/When";
+import { PlanTiming } from "@/components/PlanTiming";
 import { ShareButton } from "@/components/ShareButton";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { SubmitButton } from "@/components/SubmitButton";
-import { leaveGroup } from "@/lib/actions";
 import { PAST_GRACE_MS, isLive } from "@/lib/status";
 import { getT } from "@/lib/i18n";
-import { GroupAdmin, KickableMember, LeaveGroupButton } from "@/components/GroupAdmin";
+import {
+  EditableGroupTitle,
+  DeleteGroupButton,
+  KickableMember,
+  LeaveGroupButton,
+} from "@/components/GroupAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +40,12 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
             { AND: [{ startsAt: null }, { createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } }] },
           ],
         },
-        include: { rsvps: true },
+        include: {
+          rsvps: true,
+          pollOptions: {
+            select: { id: true, startsAt: true, votes: { select: { userId: true } } },
+          },
+        },
         orderBy: { createdAt: "desc" },
         take: 20,
       },
@@ -46,16 +55,24 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
   if (!group.memberships.some((m) => m.userId === userId)) {
     redirect(`/g/join/${group.inviteToken}`);
   }
+  const isAdmin = group.adminId === userId;
 
   return (
     <main className="flex flex-col gap-6">
       <AutoRefresh seconds={20} />
       <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href="/" aria-label={t("home")} className="chip">{locale === "he" ? "→" : "←"}</Link>
-          <h1 className="text-2xl font-extrabold">{group.name}</h1>
+          {isAdmin ? (
+            <EditableGroupTitle groupId={group.id} name={group.name} />
+          ) : (
+            <h1 className="text-2xl font-extrabold">{group.name}</h1>
+          )}
         </div>
-        <LocaleToggle />
+        <div className="flex items-center gap-2">
+          {isAdmin && <DeleteGroupButton groupId={group.id} />}
+          <LocaleToggle />
+        </div>
       </header>
 
       <div className="flex gap-3">
@@ -72,6 +89,7 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
         )}
         {group.events.map((e) => {
           const q = resolveQuorum(e.rsvps);
+          const timing = planTiming(e);
           return (
             <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -80,11 +98,14 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
                 </span>
                 <StatusChip status={e.status} isPoll={e.isPoll} isLive={isLive(e)} />
               </div>
-              {e.startsAt && (
-                <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                  <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
-                </span>
-              )}
+              <PlanTiming
+                chosenIso={timing.chosen?.toISOString()}
+                flexMinutes={e.flexMinutes}
+                rangeStartIso={timing.rangeStart?.toISOString()}
+                rangeEndIso={timing.rangeEnd?.toISOString()}
+                leadingIso={timing.leading?.toISOString()}
+                multi={timing.multi}
+              />
               {!e.isPoll && (
                 <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
               )}
@@ -109,11 +130,7 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
         </div>
       </section>
 
-      {group.adminId === userId ? (
-        <GroupAdmin groupId={group.id} name={group.name} />
-      ) : (
-        <LeaveGroupButton groupId={group.id} />
-      )}
+      {!isAdmin && <LeaveGroupButton groupId={group.id} />}
     </main>
   );
 }

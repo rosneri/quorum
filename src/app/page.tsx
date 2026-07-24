@@ -3,9 +3,10 @@ import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { onboard } from "@/lib/actions";
 import { resolveQuorum } from "@/lib/quorum";
+import { planTiming } from "@/lib/planTiming";
 import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
-import { When } from "@/components/When";
+import { PlanTiming } from "@/components/PlanTiming";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -105,8 +106,11 @@ export default async function Home() {
       include: {
         rsvps: true,
         group: true,
-        // owner needs to know when guests proposed times they haven't OK'd
-        pollOptions: { where: { suggested: true }, select: { id: true } },
+        // all candidate times (with votes) drive the range + leading date; the
+        // `suggested` flag also feeds the owner's "new suggestions" badge
+        pollOptions: {
+          select: { id: true, startsAt: true, suggested: true, votes: { select: { userId: true } } },
+        },
       },
       orderBy: [{ startsAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
       take: 60,
@@ -160,7 +164,9 @@ export default async function Home() {
         )}
         {upcoming.map((e) => {
           const q = resolveQuorum(e.rsvps);
-          const suggestedCount = e.creatorId === user.id ? e.pollOptions.length : 0;
+          const timing = planTiming(e);
+          const suggestedCount =
+            e.creatorId === user.id ? e.pollOptions.filter((o) => o.suggested).length : 0;
           return (
             <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -177,13 +183,20 @@ export default async function Home() {
                   🔔 {t("newSuggestions", { n: suggestedCount })}
                 </span>
               )}
-              <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                {e.isPoll ? (
-                  t("votingOnTime")
-                ) : e.startsAt ? (
-                  <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
-                ) : null}
-                {e.group ? ` · ${e.group.name}` : ""}
+              <div className="flex flex-col gap-1">
+                <PlanTiming
+                  chosenIso={timing.chosen?.toISOString()}
+                  flexMinutes={e.flexMinutes}
+                  rangeStartIso={timing.rangeStart?.toISOString()}
+                  rangeEndIso={timing.rangeEnd?.toISOString()}
+                  leadingIso={timing.leading?.toISOString()}
+                  multi={timing.multi}
+                />
+                {e.group && (
+                  <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+                    {e.group.name}
+                  </span>
+                )}
               </div>
               {!e.isPoll && (
                 <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
@@ -220,6 +233,7 @@ export default async function Home() {
           <h2 className="label">{t("archiveTitle")}</h2>
           {archived.map((e) => {
             const declined = myState(e) === "OUT";
+            const timing = planTiming(e);
             return (
               <Link
                 key={e.id}
@@ -237,13 +251,20 @@ export default async function Home() {
                     <StatusChip status={e.status} isPoll={e.isPoll} isLive={false} />
                   )}
                 </div>
-                <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                  {e.startsAt ? (
-                    <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
-                  ) : e.isPoll ? (
-                    t("votingOnTime")
-                  ) : null}
-                  {e.group ? ` · ${e.group.name}` : ""}
+                <div className="flex flex-col gap-1">
+                  <PlanTiming
+                    chosenIso={timing.chosen?.toISOString()}
+                    flexMinutes={e.flexMinutes}
+                    rangeStartIso={timing.rangeStart?.toISOString()}
+                    rangeEndIso={timing.rangeEnd?.toISOString()}
+                    leadingIso={timing.leading?.toISOString()}
+                    multi={timing.multi}
+                  />
+                  {e.group && (
+                    <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+                      {e.group.name}
+                    </span>
+                  )}
                 </div>
               </Link>
             );
