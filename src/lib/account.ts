@@ -17,6 +17,20 @@ function fail(code: string, next: string): never {
   redirect(`/account?${q}`);
 }
 
+/** Map a Supabase auth error to one of our own error codes (see ERROR_KEYS). */
+function authErrorCode(error: { code?: string } | null): string {
+  switch (error?.code) {
+    case "user_already_exists":
+      return "emailTaken";
+    // Default Supabase SMTP is rate-limited; surface it instead of a generic error.
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+      return "rateLimited";
+    default:
+      return "authFailed";
+  }
+}
+
 /**
  * Link the current (anonymous) user to an email+password account — or, with
  * no current user, create a fresh account. Credentials live in Supabase Auth;
@@ -46,7 +60,8 @@ export async function signUp(formData: FormData) {
     options: { data: { name } },
   });
   if (error || !data.user) {
-    fail(error?.code === "user_already_exists" ? "emailTaken" : "authFailed", next);
+    console.error("[signUp] supabase error", { code: error?.code, message: error?.message });
+    fail(authErrorCode(error), next);
   }
   // With email confirmation on, Supabase obfuscates existing accounts by
   // returning a ghost user with no identities.
@@ -81,6 +96,7 @@ export async function signIn(formData: FormData) {
     password,
   });
   if (error || !data.user) {
+    console.error("[signIn] supabase error", { code: error?.code, message: error?.message });
     fail(error?.code === "email_not_confirmed" ? "unconfirmed" : "credentials", next);
   }
 

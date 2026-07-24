@@ -13,6 +13,7 @@ const ERROR_KEYS = {
   emailTaken: "errEmailTaken",
   credentials: "errCredentials",
   unconfirmed: "errUnconfirmed",
+  rateLimited: "errRateLimited",
   authFailed: "errAuthFailed",
 } as const;
 
