@@ -32,6 +32,8 @@ const en = {
   groups: "Groups",
   newGroup: "+ New group",
   groupsHint: "Groups keep your regulars one tap away.",
+  archiveTitle: "Past & declined",
+  youDeclined: "You're out",
 
   // new plan
   newPlanTitle: "New plan",
@@ -239,6 +241,8 @@ const he: Dict = {
   groups: "קבוצות",
   newGroup: "+ קבוצה חדשה",
   groupsHint: "קבוצות שומרות את הקבועים שלך במרחק נגיעה.",
+  archiveTitle: "עבר וסירובים",
+  youDeclined: "לא מגיע/ה",
 
   newPlanTitle: "תוכנית חדשה",
   whatsThePlan: "מה התוכנית?",

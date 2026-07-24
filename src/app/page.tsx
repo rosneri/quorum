@@ -9,7 +9,7 @@ import { When } from "@/components/When";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
-import { PAST_GRACE_MS, isLive } from "@/lib/status";
+import { isLive, isPast } from "@/lib/status";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -88,10 +88,11 @@ export default async function Home() {
     prisma.event.findMany({
       where: {
         status: { in: ["PROPOSED", "CONFIRMED"] },
-        // timed events drop off a few hours after they start; polls have no
-        // time yet, so age them out ~7 days after creation
+        // Keep recent past events around (up to 30 days) so they can show in the
+        // "past & declined" section; polls with no time age out ~7 days after
+        // creation. Live partitioning into upcoming vs past happens below.
         OR: [
-          { startsAt: { gte: new Date(Date.now() - PAST_GRACE_MS) } },
+          { startsAt: { gte: new Date(Date.now() - 30 * 86_400_000) } },
           { AND: [{ startsAt: null }, { createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } }] },
         ],
         AND: {
@@ -108,7 +109,7 @@ export default async function Home() {
         pollOptions: { where: { suggested: true }, select: { id: true } },
       },
       orderBy: [{ startsAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
-      take: 30,
+      take: 60,
     }),
     prisma.group.findMany({
       where: { memberships: { some: { userId: user.id } } },
@@ -116,6 +117,20 @@ export default async function Home() {
       orderBy: { createdAt: "desc" },
     }),
   ]);
+
+  // Split plans: upcoming ones stay up top; anything past or that I declined
+  // drops into its own section below the groups.
+  const myState = (e: (typeof events)[number]) =>
+    e.rsvps.find((r) => r.userId === user.id)?.state;
+  const isArchived = (e: (typeof events)[number]) => isPast(e) || myState(e) === "OUT";
+  const upcoming = events.filter((e) => !isArchived(e));
+  const archived = events
+    .filter(isArchived)
+    .sort(
+      (a, b) =>
+        (b.startsAt?.getTime() ?? b.createdAt.getTime()) -
+        (a.startsAt?.getTime() ?? a.createdAt.getTime())
+    );
 
   return (
     <main className="flex flex-col gap-8">
@@ -138,12 +153,12 @@ export default async function Home() {
 
       <section className="flex flex-col gap-3">
         <h2 className="label">{t("plans")}</h2>
-        {events.length === 0 && (
+        {upcoming.length === 0 && (
           <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
             {t("noPlans")}
           </p>
         )}
-        {events.map((e) => {
+        {upcoming.map((e) => {
           const q = resolveQuorum(e.rsvps);
           const suggestedCount = e.creatorId === user.id ? e.pollOptions.length : 0;
           return (
@@ -199,6 +214,42 @@ export default async function Home() {
           </Link>
         ))}
       </section>
+
+      {archived.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="label">{t("archiveTitle")}</h2>
+          {archived.map((e) => {
+            const declined = myState(e) === "OUT";
+            return (
+              <Link
+                key={e.id}
+                href={`/e/${e.inviteToken}`}
+                className="card flex flex-col gap-2 p-4"
+                style={{ opacity: 0.65 }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-lg font-bold">
+                    {e.emoji ? `${e.emoji} ` : ""}{e.title}
+                  </span>
+                  {declined ? (
+                    <span className="chip">{t("youDeclined")}</span>
+                  ) : (
+                    <StatusChip status={e.status} isPoll={e.isPoll} isLive={false} />
+                  )}
+                </div>
+                <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+                  {e.startsAt ? (
+                    <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
+                  ) : e.isPoll ? (
+                    t("votingOnTime")
+                  ) : null}
+                  {e.group ? ` · ${e.group.name}` : ""}
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }

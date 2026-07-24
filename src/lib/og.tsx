@@ -12,6 +12,39 @@ const ACCENT = "#ffe08a";
 
 type Pill = { label: string; tone?: "mint" | "accent" | "quiet" };
 
+/**
+ * The Quorum brand mark (mirrors src/app/icon.svg): a little gathering of three
+ * dots reaching quorum, one already "in". Built from divs so Satori renders it
+ * reliably. Sized 60px to sit beside the 40px wordmark.
+ */
+function LogoMark() {
+  const dot = (left: number, top: number, fill: string) => ({
+    position: "absolute" as const,
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    background: fill,
+    left,
+    top,
+  });
+  return (
+    <div
+      style={{
+        display: "flex",
+        position: "relative",
+        width: 60,
+        height: 60,
+        borderRadius: 16,
+        background: "#ef6a53",
+      }}
+    >
+      <div style={dot(14, 30, PAPER)} />
+      <div style={dot(33, 30, PAPER)} />
+      <div style={dot(23, 15, "#57c98a")} />
+    </div>
+  );
+}
+
 // Characters that read left-to-right (Latin, digits, and the punctuation that
 // travels with a name, time or URL).
 const LTR_RUN = /[A-Za-z0-9@._:/+-]/;
@@ -76,7 +109,10 @@ export function ogCard({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em" }}>Quorum</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <LogoMark />
+            <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.02em" }}>Quorum</div>
+          </div>
           {pill && (
             <div
               style={{
