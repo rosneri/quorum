@@ -56,7 +56,6 @@ model Event {
   emoji       String?
   startsAt    DateTime?
   flexMinutes Int?
-  minQuorum   Int         @default(2)
   status      EventStatus @default(PROPOSED)
   inviteToken String      @unique @default(cuid())
   isPoll      Boolean     @default(false)
@@ -92,6 +91,7 @@ model Rsvp {
 // A person's stated availability for a poll event: a window (from–until)
 // or a specific moment (until = null).
 model Availability {
+  id      String    @id @default(cuid())
   eventId String
   userId  String
   from    DateTime
@@ -100,7 +100,7 @@ model Availability {
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([eventId, userId])
+  @@index([eventId])
 }
 
 model PollOption {

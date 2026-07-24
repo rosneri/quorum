@@ -17,7 +17,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { RsvpPanel } from "@/components/RsvpPanel";
 import { NameField } from "@/components/NameField";
 import { SubmitButton } from "@/components/SubmitButton";
-import { reopenEvent } from "@/lib/actions";
+import { reopenEvent, removeAvailability } from "@/lib/actions";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   ]);
   if (!event) notFound();
 
-  const q = resolveQuorum(event.rsvps, event.minQuorum);
+  const q = resolveQuorum(event.rsvps);
   const mine = user ? event.rsvps.find((r) => r.userId === user.id) : undefined;
   if (event.status === "CANCELLED") {
     return (
@@ -121,7 +121,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       {!event.isPoll && (
         <div className="card flex flex-col gap-4 p-5">
-          <QuorumMeter attending={q.attending.length} minQuorum={event.minQuorum} confirmed={q.confirmed} />
+          <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
           <RsvpPanel
             eventId={event.id}
             known={!!user}
@@ -200,18 +200,30 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
               <span className="label">{t("freeWhen")}</span>
               {event.availabilities.map((a) => (
-                <div key={a.userId} className="flex items-center justify-between text-sm">
+                <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
                   <span className="font-semibold">
                     {nameById.get(a.userId)}
                     {a.userId === user?.id ? ` (${t("you")})` : ""}
                   </span>
-                  <span style={{ color: "var(--color-ink-2)" }}>
+                  <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
                     <When iso={a.from.toISOString()} />
                     {a.until && (
                       <>
                         {" – "}
                         <TimeOnly iso={a.until.toISOString()} />
                       </>
+                    )}
+                    {a.userId === user?.id && (
+                      <form action={removeAvailability} className="inline-flex">
+                        <input type="hidden" name="id" value={a.id} />
+                        <SubmitButton
+                          aria-label="✕"
+                          className="inline-flex items-center font-bold"
+                          style={{ color: "var(--color-accent-3)" }}
+                        >
+                          ✕
+                        </SubmitButton>
+                      </form>
                     )}
                   </span>
                 </div>
@@ -220,14 +232,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           )}
           {user && (
             <div className="border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
-              <AvailabilityPanel
-                eventId={event.id}
-                known={!!user}
-                mine={(() => {
-                  const m = event.availabilities.find((a) => a.userId === user.id);
-                  return m ? { from: m.from.toISOString(), until: m.until?.toISOString() ?? null } : null;
-                })()}
-              />
+<AvailabilityPanel eventId={event.id} known={!!user} />
             </div>
           )}
           {isCreator && (

@@ -95,7 +95,7 @@ export default async function Home() {
           </p>
         )}
         {events.map((e) => {
-          const q = resolveQuorum(e.rsvps, e.minQuorum);
+          const q = resolveQuorum(e.rsvps);
           return (
             <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -113,7 +113,7 @@ export default async function Home() {
                 {e.group ? ` · ${e.group.name}` : ""}
               </div>
               {!e.isPoll && (
-                <QuorumMeter attending={q.attending.length} minQuorum={e.minQuorum} confirmed={q.confirmed} />
+                <QuorumMeter attending={q.attending.length} confirmed={q.confirmed} />
               )}
             </Link>
           );

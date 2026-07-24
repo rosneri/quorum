@@ -16,5 +16,5 @@ export function isAvailableAt(a: AvailabilityLike, t: Date): boolean {
 
 /** userIds available at t. */
 export function availableUserIds(avails: AvailabilityLike[], t: Date): string[] {
-  return avails.filter((a) => isAvailableAt(a, t)).map((a) => a.userId);
+  return [...new Set(avails.filter((a) => isAvailableAt(a, t)).map((a) => a.userId))];
 }

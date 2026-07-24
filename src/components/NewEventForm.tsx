@@ -228,8 +228,6 @@ export function NewEventForm({
         </div>
       )}
 
-      <input type="hidden" name="minQuorum" value={2} />
-
       <SubmitButton className="btn text-lg" disabled={isPoll && options.length < 2}>
         {t("createPlan")}
       </SubmitButton>

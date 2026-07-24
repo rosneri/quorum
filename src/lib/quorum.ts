@@ -4,14 +4,15 @@ export type RsvpLike = {
   personalMin: number;
 };
 
+/** A plan is "on" once this many people are in. Plans have no upper limit. */
+export const MIN_TO_HAPPEN = 2;
+
 export type QuorumResult = {
   /** userIds actually attending after personal thresholds cascade */
   attending: string[];
   /** userIds who said IN but whose personal minimum isn't met */
   waiting: string[];
   confirmed: boolean;
-  /** how many more attendees are needed to reach the event minimum */
-  needed: number;
 };
 
 /**
@@ -22,7 +23,7 @@ export type QuorumResult = {
  * out shrinks the count, which can cascade. Dropping the person with the
  * highest personal minimum first yields the unique maximal stable set.
  */
-export function resolveQuorum(rsvps: RsvpLike[], minQuorum: number): QuorumResult {
+export function resolveQuorum(rsvps: RsvpLike[]): QuorumResult {
   const ins = rsvps.filter((r) => r.state === "IN");
   const pool = [...ins].sort((a, b) => a.personalMin - b.personalMin);
 
@@ -37,7 +38,6 @@ export function resolveQuorum(rsvps: RsvpLike[], minQuorum: number): QuorumResul
   return {
     attending,
     waiting: ins.map((r) => r.userId).filter((id) => !attendingSet.has(id)),
-    confirmed: attending.length >= minQuorum && attending.length > 0,
-    needed: Math.max(0, minQuorum - attending.length),
+    confirmed: attending.length >= MIN_TO_HAPPEN,
   };
 }

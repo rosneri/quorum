@@ -105,7 +105,6 @@ export async function createEvent(formData: FormData) {
 
   const emoji = String(formData.get("emoji") ?? "").trim() || null;
   const groupId = String(formData.get("groupId") ?? "") || null;
-  const minQuorum = Math.min(20, Math.max(2, Number(formData.get("minQuorum") ?? 2)));
   const isPoll = formData.get("isPoll") === "1";
 
   let startsAt: Date | null = null;
@@ -144,7 +143,6 @@ export async function createEvent(formData: FormData) {
       creatorId: userId,
       startsAt,
       flexMinutes,
-      minQuorum,
       isPoll,
       publicVotes: formData.get("publicVotes") !== "0",
       pollOptions: isPoll
@@ -270,17 +268,11 @@ export async function lockCustomTime(formData: FormData) {
   revalidatePath(`/e/${event.inviteToken}`);
 }
 
-export async function setAvailability(formData: FormData) {
+export async function addAvailability(formData: FormData) {
   const eventId = String(formData.get("eventId") ?? "");
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event || !event.isPoll || event.status === "CANCELLED") return;
   const userId = await ensureUser(String(formData.get("name") ?? ""));
-
-  if (formData.get("clear") === "1") {
-    await prisma.availability.deleteMany({ where: { eventId, userId } });
-    revalidatePath(`/e/${event.inviteToken}`);
-    return;
-  }
 
   const from = new Date(String(formData.get("from") ?? ""));
   if (isNaN(from.getTime())) return;
@@ -288,12 +280,21 @@ export async function setAvailability(formData: FormData) {
   let until: Date | null = untilRaw ? new Date(untilRaw) : null;
   if (until && (isNaN(until.getTime()) || until.getTime() <= from.getTime())) until = null;
 
-  await prisma.availability.upsert({
-    where: { eventId_userId: { eventId, userId } },
-    create: { eventId, userId, from, until },
-    update: { from, until },
-  });
+  const count = await prisma.availability.count({ where: { eventId, userId } });
+  if (count >= 10) return;
+
+  await prisma.availability.create({ data: { eventId, userId, from, until } });
   revalidatePath(`/e/${event.inviteToken}`);
+}
+
+export async function removeAvailability(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const userId = await getUserId();
+  if (!userId) return;
+  const entry = await prisma.availability.findUnique({ where: { id }, include: { event: true } });
+  if (!entry || entry.userId !== userId) return;
+  await prisma.availability.delete({ where: { id } });
+  revalidatePath(`/e/${entry.event.inviteToken}`);
 }
 
 export async function reopenEvent(formData: FormData) {
