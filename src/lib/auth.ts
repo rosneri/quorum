@@ -36,6 +36,12 @@ export async function getUser() {
 }
 
 /** Only callable from Server Actions / Route Handlers (cookie write). */
+export async function clearUserCookie() {
+  const store = await cookies();
+  store.delete(COOKIE);
+}
+
+/** Only callable from Server Actions / Route Handlers (cookie write). */
 export async function setUserCookie(userId: string) {
   const store = await cookies();
   store.set(COOKIE, encode(userId), {

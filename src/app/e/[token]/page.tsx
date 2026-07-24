@@ -131,7 +131,10 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
   const nameById = new Map(event.availabilities.map((a) => [a.userId, a.user.name]));
   const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
-  const showList = !event.rsvps.length || event.publicVotes || isCreator;
+  // Names are revealed only when the organizer allows it AND the viewer is
+  // signed in with an account (the organizer always sees them).
+  const signedIn = !!user?.authId;
+  const showList = isCreator || !event.rsvps.length || (event.publicVotes && signedIn);
 
   return (
     <main className="flex flex-col gap-6">
@@ -260,6 +263,18 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             {!event.publicVotes && (
               <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
             )}
+            {event.publicVotes && !showList && (
+              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+                {t("signInToSeeNames")}{" "}
+                <Link
+                  href={`/account?next=/e/${event.inviteToken}`}
+                  className="font-bold"
+                  style={{ color: "var(--color-accent-2)" }}
+                >
+                  {t("signInToSeeNamesCta")}
+                </Link>
+              </p>
+            )}
             {!user && (
               <form action={onboard} className="flex flex-col gap-3">
                 <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
@@ -386,7 +401,22 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       )}
 
       {event.rsvps.length > 0 && !showList && (
-        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whosInPrivate")}</p>
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+          {event.publicVotes ? (
+            <>
+              {t("signInToSeeNames")}{" "}
+              <Link
+                href={`/account?next=/e/${event.inviteToken}`}
+                className="font-bold"
+                style={{ color: "var(--color-accent-2)" }}
+              >
+                {t("signInToSeeNamesCta")}
+              </Link>
+            </>
+          ) : (
+            t("whosInPrivate")
+          )}
+        </p>
       )}
       {event.rsvps.length > 0 && showList && (
         <section className="flex flex-col gap-2">
