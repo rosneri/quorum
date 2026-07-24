@@ -20,6 +20,7 @@ export function formatWhen(startsAt: Date, flexMinutes?: number | null): string 
       weekday: "short",
       month: "short",
       day: "numeric",
+      year: startsAt.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
 
   const flex = flexMinutes ? ` ±${flexMinutes}m` : "";

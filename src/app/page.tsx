@@ -48,10 +48,14 @@ export default async function Home() {
     prisma.event.findMany({
       where: {
         status: { in: ["PROPOSED", "CONFIRMED"] },
-        OR: [
-          { rsvps: { some: { userId: user.id } } },
-          { group: { memberships: { some: { userId: user.id } } } },
-        ],
+        // polls have no time yet; timed events drop off 3h after they start
+        OR: [{ startsAt: null }, { startsAt: { gte: new Date(Date.now() - 3 * 3_600_000) } }],
+        AND: {
+          OR: [
+            { rsvps: { some: { userId: user.id } } },
+            { group: { memberships: { some: { userId: user.id } } } },
+          ],
+        },
       },
       include: { rsvps: true, group: true },
       orderBy: [{ startsAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
@@ -97,7 +101,7 @@ export default async function Home() {
               </div>
               <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
                 {e.isPoll ? (
-                  "Time is up for a vote"
+                  "Voting on a time"
                 ) : e.startsAt ? (
                   <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
                 ) : null}

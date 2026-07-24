@@ -20,7 +20,10 @@ export default async function GroupPage({ params }: PageProps<"/g/[id]">) {
     include: {
       memberships: { include: { user: true }, orderBy: { joinedAt: "asc" } },
       events: {
-        where: { status: { in: ["PROPOSED", "CONFIRMED"] } },
+        where: {
+          status: { in: ["PROPOSED", "CONFIRMED"] },
+          OR: [{ startsAt: null }, { startsAt: { gte: new Date(Date.now() - 3 * 3_600_000) } }],
+        },
         include: { rsvps: true },
         orderBy: { createdAt: "desc" },
         take: 20,

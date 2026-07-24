@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { rsvp } from "@/lib/actions";
 import { NameField } from "./NameField";
 
@@ -16,9 +16,21 @@ export function RsvpPanel({
   myMin: number;
 }) {
   const [min, setMin] = useState(myMin);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inRef = useRef<HTMLButtonElement>(null);
+
+  function pickMin(n: number) {
+    setMin(n);
+    // already in? save the new threshold immediately instead of waiting for a re-tap
+    if (myState === "IN") {
+      requestAnimationFrame(() =>
+        formRef.current?.requestSubmit(inRef.current ?? undefined)
+      );
+    }
+  }
 
   return (
-    <form action={rsvp} className="flex flex-col gap-4">
+    <form ref={formRef} action={rsvp} className="flex flex-col gap-4">
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="personalMin" value={min} />
       <NameField known={known} />
@@ -32,7 +44,7 @@ export function RsvpPanel({
               type="button"
               className="chip"
               data-on={min === n}
-              onClick={() => setMin(n)}
+              onClick={() => pickMin(n)}
             >
               {n === 0 ? "Anyone" : `${n}+`}
             </button>
@@ -46,7 +58,7 @@ export function RsvpPanel({
       </div>
 
       <div className="flex gap-3">
-        <button name="state" value="IN" className="btn flex-1" data-on={myState === "IN"}>
+        <button ref={inRef} name="state" value="IN" className="btn flex-1" data-on={myState === "IN"}>
           {myState === "IN" ? "You're in ✓" : "I'm in"}
         </button>
         <button name="state" value="OUT" className="btn btn-quiet flex-1">

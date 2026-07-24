@@ -105,6 +105,7 @@ export function NewEventForm({
           <input
             type="datetime-local"
             value={when}
+            min={toLocalInputValue(new Date())}
             onChange={(e) => setWhen(e.target.value)}
             required
             className="field"
@@ -135,6 +136,7 @@ export function NewEventForm({
               <input
                 type="datetime-local"
                 value={o}
+                min={toLocalInputValue(new Date())}
                 onChange={(e) =>
                   setOptions(options.map((x, j) => (j === i ? e.target.value : x)))
                 }

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveQuorum } from "@/lib/quorum";
-import { vote, lockOption, cancelEvent } from "@/lib/actions";
+import { vote, lockOption, onboard } from "@/lib/actions";
+import { CancelButton } from "@/components/CancelButton";
 import { QuorumMeter } from "@/components/QuorumMeter";
 import { StatusChip } from "@/components/StatusChip";
 import { When } from "@/components/When";
@@ -72,6 +73,13 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
       {event.isPoll && event.status !== "CANCELLED" && (
         <div className="card flex flex-col gap-3 p-5">
           <span className="label">When works? Tap all that do.</span>
+          {!user && (
+            <form action={onboard} className="flex flex-col gap-3">
+              <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
+              <NameField known={false} />
+              <button className="btn self-start text-sm">Save name &amp; vote</button>
+            </form>
+          )}
           {event.pollOptions.map((o) => {
             const votedByMe = user ? o.votes.some((v) => v.userId === user.id) : false;
             const top = Math.max(1, ...event.pollOptions.map((p) => p.votes.length));
@@ -80,11 +88,11 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                 <div className="flex items-center gap-2">
                   <form action={vote} className="flex-1">
                     <input type="hidden" name="optionId" value={o.id} />
-                    <NameField known={!!user} />
                     <button
                       className="chip w-full justify-between text-left"
                       data-on={votedByMe}
-                      style={{ display: "flex" }}
+                      disabled={!user}
+                      style={{ display: "flex", opacity: user ? 1 : 0.6 }}
                     >
                       <When iso={o.startsAt.toISOString()} />
                       <span className="font-bold">{o.votes.length} ✋</span>
@@ -157,14 +165,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
       <div className="flex items-center gap-3">
         <ShareButton path={`/e/${event.inviteToken}`} title={event.title} />
-        {isCreator && event.status !== "CANCELLED" && (
-          <form action={cancelEvent}>
-            <input type="hidden" name="eventId" value={event.id} />
-            <button className="text-sm font-semibold" style={{ color: "var(--color-accent-3)" }}>
-              Call it off
-            </button>
-          </form>
-        )}
+        {isCreator && event.status !== "CANCELLED" && <CancelButton eventId={event.id} />}
       </div>
     </main>
   );

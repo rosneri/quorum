@@ -65,15 +65,18 @@ export async function createEvent(formData: FormData) {
   let flexMinutes: number | null = null;
   const optionDates: Date[] = [];
 
+  // small grace so "right now" plans survive clock skew
+  const earliest = Date.now() - 15 * 60_000;
+
   if (isPoll) {
     for (const raw of formData.getAll("option")) {
       const d = new Date(String(raw));
-      if (!isNaN(d.getTime())) optionDates.push(d);
+      if (!isNaN(d.getTime()) && d.getTime() >= earliest) optionDates.push(d);
     }
     if (optionDates.length < 2) return;
   } else {
     const d = new Date(String(formData.get("startsAt") ?? ""));
-    if (isNaN(d.getTime())) return;
+    if (isNaN(d.getTime()) || d.getTime() < earliest) return;
     startsAt = d;
     const flex = Number(formData.get("flexMinutes") ?? 0);
     flexMinutes = flex > 0 ? Math.min(240, flex) : null;
