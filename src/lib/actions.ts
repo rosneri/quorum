@@ -244,9 +244,11 @@ export async function addAvailability(formData: FormData) {
     // them (turning a fixed plan into a vote if it was single-time).
     if (from.getTime() < Date.now() - 15 * 60_000) return;
     if ((await prisma.pollOption.count({ where: { eventId } })) >= 12) return;
+    // The owner adding a time confirms it outright; a guest's is a suggestion.
+    const suggested = event.creatorId !== userId;
     const option =
       (await prisma.pollOption.findFirst({ where: { eventId, startsAt: from } })) ??
-      (await prisma.pollOption.create({ data: { eventId, startsAt: from, suggested: true } }));
+      (await prisma.pollOption.create({ data: { eventId, startsAt: from, suggested } }));
     await prisma.rsvp.upsert({
       where: { eventId_userId: { eventId, userId } },
       create: { eventId, userId, state: "IN" },
