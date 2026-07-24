@@ -19,6 +19,14 @@ function quickTime(hoursFromNow: number): string {
   return toLocalInputValue(d);
 }
 
+// floored to the 15-min grid so the time dropdown has a matching slot;
+// a few minutes in the past is fine (the server allows a 15-min grace)
+function rightNow(): string {
+  const d = new Date();
+  d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+  return toLocalInputValue(d);
+}
+
 function tonight(): string {
   const d = new Date();
   d.setHours(20, 0, 0, 0);
@@ -96,6 +104,7 @@ export function NewEventForm({
         <>
           <div className="flex flex-wrap gap-1.5">
             {[
+              [t("now"), rightNow()],
               [t("in1Hour"), quickTime(1)],
               [t("in2Hours"), quickTime(2)],
               [t("tonight8"), tonight()],
