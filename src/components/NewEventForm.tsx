@@ -29,6 +29,18 @@ export function NewEventForm({
   const pollDays = useMemo(() => buildDays(tag, { today: t("today"), tomorrow: t("tomorrow") }), [tag, locale]);
   const pollTimes = useMemo(() => buildTimes(tag), [tag]);
 
+  // On today, start the time strip at the current 15-min slot instead of
+  // midnight — the first option shown should be roughly "now". Other days
+  // show the full day.
+  const todayKey = tliv(new Date()).slice(0, 10);
+  const nowSlotKey = (() => {
+    const d = new Date();
+    d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+    return tliv(d).slice(11);
+  })();
+  const pollTimesForDay =
+    pollDay === todayKey ? pollTimes.filter((s) => s.key >= nowSlotKey) : pollTimes;
+
   function optionLabel(v: string): string {
     const todayKey = tliv(new Date()).slice(0, 10);
     const tomorrowKey = tliv(new Date(Date.now() + 86_400_000)).slice(0, 10);
@@ -116,7 +128,7 @@ export function NewEventForm({
             }
           />
           <Strip
-            items={pollTimes}
+            items={pollTimesForDay}
             selected={options.filter((o) => o.startsWith(pollDay)).map((o) => o.slice(11))}
             onPick={(time) => {
               const v = `${pollDay}T${time}`;
@@ -128,9 +140,6 @@ export function NewEventForm({
                     : [...prev, v].sort()
               );
             }}
-            isDisabled={(time) =>
-              pollDay === tliv(new Date()).slice(0, 10) && time < tliv(new Date()).slice(11)
-            }
             ariaLabel={t("whenQ")}
           />
           {options.length > 0 && (
