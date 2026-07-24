@@ -108,6 +108,9 @@ model PollOption {
   id       String   @id @default(cuid())
   eventId  String
   startsAt DateTime
+  // A time a participant proposed that the owner hasn't folded into the plan
+  // yet — shown with a "?" until the owner confirms it (via editing).
+  suggested Boolean @default(false)
 
   event Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   votes PollVote[]
