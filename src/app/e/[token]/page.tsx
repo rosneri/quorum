@@ -170,6 +170,44 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
               !event.rsvps.some((r) => r.state === "IN" && r.userId !== user?.id)
             }
           />
+
+          {/* doesn't work? suggest another time (or a range) — a specific
+              suggestion turns this fixed plan into a vote */}
+          {user && (
+            <div className="flex flex-col gap-3 border-t pt-4" style={{ borderColor: "var(--color-paper-3)" }}>
+              {event.availabilities.length > 0 && showList && (
+                <div className="flex flex-col gap-1 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
+                  <span className="label">{t("freeWhen")}</span>
+                  {event.availabilities.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-semibold">
+                        {nameById.get(a.userId)}
+                        {a.userId === user?.id ? ` (${t("you")})` : ""}
+                      </span>
+                      <span className="flex items-center gap-2" style={{ color: "var(--color-ink-2)" }}>
+                        <When iso={a.from.toISOString()} />
+                        {a.until && (
+                          <>
+                            {" – "}
+                            <TimeOnly iso={a.until.toISOString()} />
+                          </>
+                        )}
+                        {a.userId === user?.id && (
+                          <form action={removeAvailability} className="inline-flex">
+                            <input type="hidden" name="id" value={a.id} />
+                            <SubmitButton aria-label="✕" className="inline-flex items-center font-bold" style={{ color: "var(--color-accent-3)" }}>
+                              ✕
+                            </SubmitButton>
+                          </form>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <AvailabilityPanel eventId={event.id} known={!!user} labelKey="doesntWork" />
+            </div>
+          )}
         </div>
       )}
 

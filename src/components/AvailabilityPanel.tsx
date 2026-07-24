@@ -26,7 +26,16 @@ function defaultTime(offsetHours: number): string {
  * Each add is one entry; multiple entries (and several times on the same
  * date) are expected.
  */
-export function AvailabilityPanel({ eventId, known }: { eventId: string; known: boolean }) {
+export function AvailabilityPanel({
+  eventId,
+  known,
+  labelKey = "suggestTime",
+}: {
+  eventId: string;
+  known: boolean;
+  /** collapsed-button label; defaults to the poll "none of these work" phrasing */
+  labelKey?: "suggestTime" | "doesntWork";
+}) {
   const { t, locale } = useI18n();
   const tag = localeTag(locale);
   const [open, setOpen] = useState(false);
@@ -49,7 +58,7 @@ export function AvailabilityPanel({ eventId, known }: { eventId: string; known: 
         onClick={() => setOpen(true)}
       >
         <span aria-hidden>🕗</span>
-        {t("suggestTime")}
+        {t(labelKey)}
       </button>
     );
   }
