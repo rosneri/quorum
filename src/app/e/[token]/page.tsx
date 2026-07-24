@@ -188,7 +188,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     transition: "width 220ms var(--ease-out)",
                   }}
                 />
-                {event.publicVotes && o.votes.length > 0 && (
+                {(event.publicVotes || isCreator) && o.votes.length > 0 && (
                   <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
                     {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
                   </span>
@@ -196,7 +196,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
               </div>
             );
           })}
-          {event.availabilities.length > 0 && (
+          {event.availabilities.length > 0 && (event.publicVotes || isCreator) && (
             <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
               <span className="label">{t("freeWhen")}</span>
               {event.availabilities.map((a) => (
@@ -241,7 +241,10 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {!event.isPoll && event.rsvps.length > 0 && (
+      {!event.isPoll && event.rsvps.length > 0 && !(event.publicVotes || isCreator) && (
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whosInPrivate")}</p>
+      )}
+      {!event.isPoll && event.rsvps.length > 0 && (event.publicVotes || isCreator) && (
         <section className="flex flex-col gap-2">
           <h2 className="label">{t("whosIn")}</h2>
           <div className="flex flex-col gap-1.5">

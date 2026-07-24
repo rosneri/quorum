@@ -86,26 +86,26 @@ export function CustomDatePill({
   stripKeys: string[];
   onPick: (dayKey: string) => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const isCustom = !stripKeys.includes(selectedDay);
   const todayKey = toLocalInputValue(new Date()).slice(0, 10);
   return (
-    <span className="strip-pill relative">
+    <span className="strip-pill relative inline-flex">
       <button
         type="button"
         className="chip"
-        data-on={isCustom}
-        onClick={() => inputRef.current?.showPicker?.() ?? inputRef.current?.click()}
+        onClick={() => {
+          try {
+            inputRef.current?.showPicker();
+          } catch {
+            inputRef.current?.click();
+          }
+        }}
       >
-        {isCustom
-          ? new Date(`${selectedDay}T12:00`).toLocaleDateString(localeTag(locale), {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })
-          : t("customDate")}
+        {t("customDate")}
       </button>
+      {/* transparent native input covers the pill so a plain tap opens the OS picker */}
       <input
         ref={inputRef}
         type="date"
@@ -114,11 +114,28 @@ export function CustomDatePill({
         min={todayKey}
         value={isCustom ? selectedDay : ""}
         onChange={(e) => e.target.value && onPick(e.target.value)}
-        className="pointer-events-none absolute bottom-0 h-0 w-0 opacity-0"
-        style={{ insetInlineStart: 0 }}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />
     </span>
   );
+}
+
+/** If the selected day isn't one of the strip's stock days, add it as a pill. */
+export function withSelectedDay(
+  days: { key: string; label: string; sub?: string }[],
+  selectedDay: string,
+  tag: string
+): { key: string; label: string; sub?: string }[] {
+  if (days.some((d) => d.key === selectedDay)) return days;
+  const d = new Date(`${selectedDay}T12:00`);
+  return [
+    ...days,
+    {
+      key: selectedDay,
+      label: d.toLocaleDateString(tag, { day: "numeric", month: "short" }),
+      sub: d.toLocaleDateString(tag, { weekday: "short" }),
+    },
+  ];
 }
 
 export function buildDays(
@@ -189,7 +206,7 @@ export function DateTimeField({
   return (
     <div className="flex flex-col gap-2">
       <Strip
-        items={days}
+        items={withSelectedDay(days, currentDay, tag)}
         selected={currentDay}
         onPick={(day) => onChange(`${day}T${currentTime}`)}
         ariaLabel={t("whenQ")}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createEvent } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
-import { CustomDatePill, DateTimeField, Strip, buildDays, buildTimes, localeTag, toLocalInputValue as tliv } from "./DateTimeField";
+import { CustomDatePill, DateTimeField, Strip, buildDays, buildTimes, localeTag, toLocalInputValue as tliv, withSelectedDay } from "./DateTimeField";
 import { useMemo } from "react";
 import { SubmitButton } from "./SubmitButton";
 
@@ -21,11 +21,10 @@ function quickTime(hoursFromNow: number): string {
   return toLocalInputValue(d);
 }
 
-// floored to the 15-min grid so the time dropdown has a matching slot;
-// a few minutes in the past is fine (the server allows a 15-min grace)
+// next free 15-min slot: 16:12 -> 16:15 (never a slot that already passed)
 function rightNow(): string {
   const d = new Date();
-  d.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+  d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
   return toLocalInputValue(d);
 }
 
@@ -109,6 +108,19 @@ export function NewEventForm({
       )}
 
       <div className="flex flex-col gap-1.5">
+        <span className="label">{t("privacyLabel")}</span>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className="chip text-sm" data-on={publicVotes} onClick={() => setPublicVotes(true)}>
+            {t("privacyPublic")}
+          </button>
+          <button type="button" className="chip text-sm" data-on={!publicVotes} onClick={() => setPublicVotes(false)}>
+            {t("privacyPrivate")}
+          </button>
+        </div>
+      </div>
+      <input type="hidden" name="publicVotes" value={publicVotes ? "1" : "0"} />
+
+      <div className="flex flex-col gap-1.5">
         <span className="label">{t("whenQ")}</span>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" className="chip" data-on={!isPoll} onClick={() => setIsPoll(false)}>
@@ -123,14 +135,14 @@ export function NewEventForm({
 
       {!isPoll ? (
         <>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="strip">
             {[
               [t("now"), rightNow()],
               [t("in1Hour"), quickTime(1)],
               [t("in2Hours"), quickTime(2)],
               [t("tonight8"), tonight()],
             ].map(([label, v]) => (
-              <button key={label} type="button" className="chip" data-on={when === v} onClick={() => setWhen(v)}>
+              <button key={label} type="button" className="chip strip-pill" data-on={when === v} onClick={() => setWhen(v)}>
                 {label}
               </button>
             ))}
@@ -161,7 +173,7 @@ export function NewEventForm({
         <div className="flex flex-col gap-3 rounded-2xl p-3" style={{ background: "var(--color-paper-2)" }}>
           <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("pollHint")}</p>
           <Strip
-            items={pollDays}
+            items={withSelectedDay(pollDays, pollDay, tag)}
             selected={pollDay}
             onPick={setPollDay}
             ariaLabel={t("whenQ")}
@@ -212,15 +224,7 @@ export function NewEventForm({
           {options.map((o) => (
             <input key={o} type="hidden" name="option" value={new Date(o).toISOString()} />
           ))}
-          <button
-            type="button"
-            className="chip self-start text-sm"
-            data-on={publicVotes}
-            onClick={() => setPublicVotes(!publicVotes)}
-          >
-            {publicVotes ? "👀 " : "🙈 "}{t("showVoters")}
-          </button>
-          <input type="hidden" name="publicVotes" value={publicVotes ? "1" : "0"} />
+
         </div>
       )}
 
