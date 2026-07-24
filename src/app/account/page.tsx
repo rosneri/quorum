@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getUser } from "@/lib/auth";
-import { signIn, signUp, signOut } from "@/lib/account";
+import { signIn, signUp, signOut, updateName, updateEmail, updatePassword } from "@/lib/account";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AuthForm } from "@/components/AuthForm";
@@ -14,6 +14,7 @@ const ERROR_KEYS = {
   credentials: "errCredentials",
   unconfirmed: "errUnconfirmed",
   rateLimited: "errRateLimited",
+  wrongPassword: "errWrongPassword",
   authFailed: "errAuthFailed",
 } as const;
 
@@ -22,6 +23,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
   const sp = await searchParams;
   const rawError = typeof sp.error === "string" ? sp.error : "";
   const errorKey = rawError in ERROR_KEYS ? ERROR_KEYS[rawError as keyof typeof ERROR_KEYS] : null;
+  const justSaved = sp.saved === "1";
   const next = typeof sp.next === "string" && sp.next.startsWith("/") ? sp.next : "";
   const user = await getUser();
 
@@ -43,22 +45,113 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
           {t(errorKey)}
         </p>
       )}
+      {justSaved && !errorKey && (
+        <p
+          className="rounded-xl px-4 py-3 text-sm font-semibold pop-in"
+          style={{ background: "var(--color-accent)" }}
+        >
+          {t("saved")}
+        </p>
+      )}
 
       {user?.authId ? (
-        <div className="card flex flex-col gap-4 p-5">
-          <div className="flex flex-col gap-1">
+        <>
+          <div className="card flex flex-col gap-1 p-5">
             <span className="text-lg font-bold">{t("hi", { name: user.name })}</span>
             <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
               {t("signedInAs", { email: user.email ?? "" })}
             </span>
           </div>
-          <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-            {t("accountLinkedBlurb")}
-          </p>
+
+          <section className="card flex flex-col gap-4 p-5">
+            <h2 className="text-lg font-bold">{t("editProfile")}</h2>
+            <form action={updateName} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="label" htmlFor="pf-name">{t("yourName")}</label>
+                <input
+                  id="pf-name"
+                  name="name"
+                  required
+                  maxLength={40}
+                  defaultValue={user.name}
+                  placeholder={t("namePlaceholder")}
+                  className="field"
+                  autoComplete="name"
+                />
+              </div>
+              <SubmitButton className="btn btn-quiet">{t("saveChanges")}</SubmitButton>
+            </form>
+          </section>
+
+          <section className="card flex flex-col gap-4 p-5">
+            <h2 className="text-lg font-bold">{t("changeEmail")}</h2>
+            <form action={updateEmail} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="label" htmlFor="em-email">{t("newEmail")}</label>
+                <input
+                  id="em-email"
+                  name="email"
+                  type="email"
+                  required
+                  defaultValue={user.email ?? ""}
+                  className="field"
+                  autoComplete="email"
+                  dir="ltr"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="label" htmlFor="em-password">{t("currentPassword")}</label>
+                <input
+                  id="em-password"
+                  name="password"
+                  type="password"
+                  required
+                  className="field"
+                  autoComplete="current-password"
+                  dir="ltr"
+                />
+              </div>
+              <SubmitButton className="btn btn-quiet">{t("saveChanges")}</SubmitButton>
+            </form>
+          </section>
+
+          <section className="card flex flex-col gap-4 p-5">
+            <h2 className="text-lg font-bold">{t("changePassword")}</h2>
+            <form action={updatePassword} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="label" htmlFor="pw-current">{t("currentPassword")}</label>
+                <input
+                  id="pw-current"
+                  name="current"
+                  type="password"
+                  required
+                  className="field"
+                  autoComplete="current-password"
+                  dir="ltr"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="label" htmlFor="pw-new">{t("newPassword")}</label>
+                <input
+                  id="pw-new"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder={t("passwordHint")}
+                  className="field"
+                  autoComplete="new-password"
+                  dir="ltr"
+                />
+              </div>
+              <SubmitButton className="btn btn-quiet">{t("saveChanges")}</SubmitButton>
+            </form>
+          </section>
+
           <form action={signOut}>
             <SubmitButton className="btn btn-quiet">{t("signOut")}</SubmitButton>
           </form>
-        </div>
+        </>
       ) : (
         <>
           <AuthForm
