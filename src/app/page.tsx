@@ -19,15 +19,43 @@ export default async function Home() {
   const user = await getUser();
 
   if (!user) {
+    const steps = [
+      { emoji: "💡", title: t("how1"), body: t("how1Body") },
+      { emoji: "🔗", title: t("how2"), body: t("how2Body") },
+      { emoji: "🎉", title: t("how3"), body: t("how3Body") },
+    ];
     return (
-      <main className="flex min-h-[70dvh] flex-col justify-center gap-8">
+      <main className="flex min-h-[75dvh] flex-col justify-center gap-8 py-6">
         <div>
-          <div className="flex items-start justify-between"><h1 className="text-5xl font-extrabold tracking-tight">{t("appName")}</h1><LocaleToggle /></div>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-4xl pop-in" aria-hidden>☕️</span>
+              <h1 className="text-5xl font-extrabold tracking-tight">{t("appName")}</h1>
+            </div>
+            <LocaleToggle />
+          </div>
+          <p className="mt-4 text-2xl font-bold leading-snug">{t("tagline")}</p>
           <p className="mt-3 text-lg" style={{ color: "var(--color-ink-2)" }}>
-            {t("tagline")}
+            {t("heroPitch")}
           </p>
         </div>
+
+        <ol className="flex flex-col gap-3">
+          {steps.map((s, i) => (
+            <li key={i} className="card flex items-start gap-3.5 p-4">
+              <span className="text-2xl pop-in" aria-hidden style={{ animationDelay: `${i * 90}ms` }}>
+                {s.emoji}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-base font-bold">{s.title}</span>
+                <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>{s.body}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+
         <form action={onboard} className="card flex flex-col gap-4 p-5">
+          <span className="label">{t("startHere")}</span>
           <div className="flex flex-col gap-1.5">
             <label className="label" htmlFor="name">{t("whatToCallYou")}</label>
             <input
