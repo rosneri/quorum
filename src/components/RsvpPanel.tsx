@@ -27,15 +27,18 @@ export function RsvpPanel({
   const formRef = useRef<HTMLFormElement>(null);
   const inRef = useRef<HTMLButtonElement>(null);
 
+  // Picking a threshold is itself a (conditional) yes: submit as IN so a
+  // "maybe"/"can't make it" turns into "count me in once enough people are".
   function pickMin(n: number) {
     setMin(n);
-    // already in? save the new threshold immediately instead of waiting for a re-tap
-    if (myState === "IN") {
-      requestAnimationFrame(() =>
-        formRef.current?.requestSubmit(inRef.current ?? undefined)
-      );
-    }
+    requestAnimationFrame(() =>
+      formRef.current?.requestSubmit(inRef.current ?? undefined)
+    );
   }
+
+  // The threshold only makes sense as a follow-up for people who haven't
+  // committed — a nudge to reconsider — or to adjust an existing conditional in.
+  const showThreshold = myState === "MAYBE" || myState === "OUT" || (myState === "IN" && min > 0);
 
   return (
     <form
@@ -52,26 +55,6 @@ export function RsvpPanel({
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="personalMin" value={min} />
       <NameField known={known} />
-
-      <div className="flex flex-col gap-1.5">
-        <span className="label">{t("illComeIf")}</span>
-        <div className="strip">
-          {[0, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              className="chip strip-pill"
-              data-on={min === n}
-              onClick={() => pickMin(n)}
-            >
-              {n === 0 ? t("anyone") : `${n}+`}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-          {min === 0 ? t("thresholdHint0") : t("thresholdHintN", { n: min })}
-        </p>
-      </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <SubmitButton
@@ -103,6 +86,28 @@ export function RsvpPanel({
           {myState === "OUT" ? t("youreOut") : t("cantMakeIt")}
         </SubmitButton>
       </div>
+
+      {showThreshold && (
+        <div className="flex flex-col gap-1.5 pop-in">
+          <span className="label">{t("illComeIf")}</span>
+          <div className="strip">
+            {[0, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className="chip strip-pill"
+                data-on={min === n}
+                onClick={() => pickMin(n)}
+              >
+                {n === 0 ? t("anyone") : `${n}+`}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+            {min === 0 ? t("thresholdHint0") : t("thresholdHintN", { n: min })}
+          </p>
+        </div>
+      )}
     </form>
   );
 }
