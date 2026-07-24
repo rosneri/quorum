@@ -48,6 +48,9 @@ const en = {
   pollHint: "Pick a day, then tap every time that could work — you can mix days.",
   chosenTimes: "Chosen times",
   customDate: "Pick a date…",
+  customEmoji: "Any emoji",
+  whenPickHint: "Add one time for a fixed plan, or several to let people pick — the winner decides itself.",
+  pickOneTime: "Pick at least one time.",
 
   // status
   stConfirmed: "Confirmed 🎉",
@@ -208,6 +211,9 @@ const he: Dict = {
   pollHint: "בוחרים יום ומסמנים כל שעה שיכולה להתאים — אפשר לשלב ימים.",
   chosenTimes: "השעות שנבחרו",
   customDate: "תאריך אחר…",
+  customEmoji: "אימוג'י אחר",
+  whenPickHint: "הוסיפו שעה אחת לתוכנית קבועה, או כמה כדי שיצביעו — המנצחת נסגרת לבד.",
+  pickOneTime: "בחרו לפחות שעה אחת.",
 
   stConfirmed: "סגור 🎉",
   stGathering: "מתגבש",

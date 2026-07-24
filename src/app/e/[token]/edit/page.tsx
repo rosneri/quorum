@@ -13,7 +13,10 @@ export default async function EditEventPage({ params }: PageProps<"/e/[token]/ed
   const { token } = await params;
   const [userId, event] = await Promise.all([
     getUserId(),
-    prisma.event.findUnique({ where: { inviteToken: token } }),
+    prisma.event.findUnique({
+      where: { inviteToken: token },
+      include: { pollOptions: { orderBy: { startsAt: "asc" } } },
+    }),
   ]);
   if (!event) notFound();
   // organizer only — everyone else back to the plan
@@ -36,8 +39,7 @@ export default async function EditEventPage({ params }: PageProps<"/e/[token]/ed
         eventId={event.id}
         title={event.title}
         emoji={event.emoji}
-        isPoll={event.isPoll}
-        startsAtIso={event.startsAt ? event.startsAt.toISOString() : null}
+        optionIsos={event.pollOptions.map((o) => o.startsAt.toISOString())}
         flexMinutes={event.flexMinutes}
       />
     </main>

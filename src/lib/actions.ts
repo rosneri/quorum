@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "./db";
 import { getUserId, setUserCookie } from "./auth";
 import { syncEventStatus } from "./status";
-import { availableUserIds } from "./availability";
 
 async function ensureUser(name?: string): Promise<string> {
   const existing = await getUserId();
@@ -98,35 +97,36 @@ export async function kickMember(formData: FormData) {
   revalidatePath(`/g/${groupId}`);
 }
 
+/** Parse the `option` fields (UTC ISO) into future, de-duplicated dates. */
+function parseOptionDates(formData: FormData): Date[] {
+  const earliest = Date.now() - 15 * 60_000; // grace so "right now" survives clock skew
+  const seen = new Set<number>();
+  const out: Date[] = [];
+  for (const raw of formData.getAll("option")) {
+    const d = new Date(String(raw));
+    if (!isNaN(d.getTime()) && d.getTime() >= earliest && !seen.has(d.getTime())) {
+      seen.add(d.getTime());
+      out.push(d);
+    }
+  }
+  return out.sort((a, b) => a.getTime() - b.getTime());
+}
+
 export async function createEvent(formData: FormData) {
   const userId = await ensureUser(String(formData.get("name") ?? ""));
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return;
+  const title = String(formData.get("title") ?? "").trim() || "Coffee";
 
   const emoji = String(formData.get("emoji") ?? "").trim() || null;
   const groupId = String(formData.get("groupId") ?? "") || null;
-  const isPoll = formData.get("isPoll") === "1";
 
-  let startsAt: Date | null = null;
-  let flexMinutes: number | null = null;
-  const optionDates: Date[] = [];
+  // Every event carries 1..N candidate times. One time = fixed plan; several =
+  // people pick, and the winner is decided automatically by the votes.
+  const optionDates = parseOptionDates(formData);
+  if (optionDates.length < 1) return;
+  const multi = optionDates.length > 1;
 
-  // small grace so "right now" plans survive clock skew
-  const earliest = Date.now() - 15 * 60_000;
-
-  if (isPoll) {
-    for (const raw of formData.getAll("option")) {
-      const d = new Date(String(raw));
-      if (!isNaN(d.getTime()) && d.getTime() >= earliest) optionDates.push(d);
-    }
-    if (optionDates.length < 2) return;
-  } else {
-    const d = new Date(String(formData.get("startsAt") ?? ""));
-    if (isNaN(d.getTime()) || d.getTime() < earliest) return;
-    startsAt = d;
-    const flex = Number(formData.get("flexMinutes") ?? 0);
-    flexMinutes = flex > 0 ? Math.min(240, flex) : null;
-  }
+  const flex = Number(formData.get("flexMinutes") ?? 0);
+  const flexMinutes = flex > 0 ? Math.min(240, flex) : null;
 
   if (groupId) {
     const member = await prisma.membership.findUnique({
@@ -141,17 +141,23 @@ export async function createEvent(formData: FormData) {
       emoji,
       groupId,
       creatorId: userId,
-      startsAt,
+      startsAt: multi ? null : optionDates[0],
       flexMinutes,
-      isPoll,
+      isPoll: multi,
       publicVotes: formData.get("publicVotes") !== "0",
-      pollOptions: isPoll
-        ? { create: optionDates.map((d) => ({ startsAt: d })) }
-        : undefined,
+      pollOptions: { create: optionDates.map((d) => ({ startsAt: d })) },
       // creator is in by default — one less tap
       rsvps: { create: { userId, state: "IN" } },
     },
+    include: { pollOptions: true },
   });
+  // creator proposes every time they picked — count them in on all of them
+  if (multi) {
+    await prisma.pollVote.createMany({
+      data: event.pollOptions.map((o) => ({ optionId: o.id, userId })),
+    });
+  }
+  await syncEventStatus(event.id);
   redirect(`/e/${event.inviteToken}`);
 }
 
@@ -203,8 +209,15 @@ export async function vote(formData: FormData) {
     where: { id: optionId },
     include: { event: true },
   });
-  if (!option || !option.event.isPoll) return;
+  if (!option || option.event.status === "CANCELLED") return;
   const userId = await ensureUser(String(formData.get("name") ?? ""));
+
+  // voting a time means "count me in for it" — make sure they're participating
+  await prisma.rsvp.upsert({
+    where: { eventId_userId: { eventId: option.eventId, userId } },
+    create: { eventId: option.eventId, userId, state: "IN" },
+    update: {},
+  });
 
   const existing = await prisma.pollVote.findUnique({
     where: { optionId_userId: { optionId, userId } },
@@ -214,64 +227,14 @@ export async function vote(formData: FormData) {
   } else {
     await prisma.pollVote.create({ data: { optionId, userId } });
   }
-  revalidatePath(`/e/${option.event.inviteToken}`);
-}
-
-/** Everyone who signalled the locked time works for them gets RSVP'd IN (existing answers kept). */
-async function autoRsvp(eventId: string, lockedAt: Date, voterIds: string[]) {
-  const avails = await prisma.availability.findMany({ where: { eventId } });
-  const ids = new Set([...voterIds, ...availableUserIds(avails, lockedAt)]);
-  for (const userId of ids) {
-    await prisma.rsvp.upsert({
-      where: { eventId_userId: { eventId, userId } },
-      create: { eventId, userId, state: "IN" },
-      update: {},
-    });
-  }
-}
-
-export async function lockOption(formData: FormData) {
-  const optionId = String(formData.get("optionId") ?? "");
-  const userId = await getUserId();
-  if (!userId) return;
-  const option = await prisma.pollOption.findUnique({
-    where: { id: optionId },
-    include: { event: true, votes: true },
-  });
-  if (!option || !option.event.isPoll) return;
-  if (option.event.creatorId !== userId) return;
-
-  await prisma.event.update({
-    where: { id: option.eventId },
-    data: { isPoll: false, startsAt: option.startsAt },
-  });
-  await autoRsvp(option.eventId, option.startsAt, option.votes.map((v) => v.userId));
   await syncEventStatus(option.eventId);
   revalidatePath(`/e/${option.event.inviteToken}`);
-}
-
-export async function lockCustomTime(formData: FormData) {
-  const userId = await getUserId();
-  if (!userId) return;
-  const eventId = String(formData.get("eventId") ?? "");
-  const at = new Date(String(formData.get("startsAt") ?? ""));
-  if (isNaN(at.getTime()) || at.getTime() < Date.now() - 15 * 60_000) return;
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event || !event.isPoll || event.creatorId !== userId) return;
-
-  await prisma.event.update({
-    where: { id: eventId },
-    data: { isPoll: false, startsAt: at },
-  });
-  await autoRsvp(eventId, at, []);
-  await syncEventStatus(eventId);
-  revalidatePath(`/e/${event.inviteToken}`);
 }
 
 export async function addAvailability(formData: FormData) {
   const eventId = String(formData.get("eventId") ?? "");
   const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event || !event.isPoll || event.status === "CANCELLED") return;
+  if (!event || event.status === "CANCELLED") return;
   const userId = await ensureUser(String(formData.get("name") ?? ""));
 
   const from = new Date(String(formData.get("from") ?? ""));
@@ -301,32 +264,39 @@ export async function editEvent(formData: FormData) {
   const userId = await getUserId();
   if (!userId) return;
   const eventId = String(formData.get("eventId") ?? "");
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: { pollOptions: true },
+  });
   if (!event || event.creatorId !== userId || event.status === "CANCELLED") return;
 
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return;
+  const title = String(formData.get("title") ?? "").trim() || "Coffee";
   const emoji = String(formData.get("emoji") ?? "").trim() || null;
+  const flex = Number(formData.get("flexMinutes") ?? 0);
+  const flexMinutes = flex > 0 ? Math.min(240, flex) : null;
 
-  const data: {
-    title: string;
-    emoji: string | null;
-    editedAt: Date;
-    startsAt?: Date;
-    flexMinutes?: number | null;
-  } = { title: title.slice(0, 80), emoji, editedAt: new Date() };
-
-  // Poll events aren't time-editable until a time is locked in.
-  if (!event.isPoll) {
-    const d = new Date(String(formData.get("startsAt") ?? ""));
-    // same 15-min grace as createEvent
-    if (isNaN(d.getTime()) || d.getTime() < Date.now() - 15 * 60_000) return;
-    data.startsAt = d;
-    const flex = Number(formData.get("flexMinutes") ?? 0);
-    data.flexMinutes = flex > 0 ? Math.min(240, flex) : null;
+  // Reconcile candidate times: keep the ones still submitted (with their votes),
+  // add new ones, drop the rest. Existing RSVPs are untouched.
+  const wanted = parseOptionDates(formData);
+  if (wanted.length >= 1) {
+    const existingByMs = new Map(event.pollOptions.map((o) => [o.startsAt.getTime(), o]));
+    const wantedMs = new Set(wanted.map((d) => d.getTime()));
+    const toDelete = event.pollOptions.filter((o) => !wantedMs.has(o.startsAt.getTime()));
+    const toAdd = wanted.filter((d) => !existingByMs.has(d.getTime()));
+    if (toDelete.length) {
+      await prisma.pollOption.deleteMany({ where: { id: { in: toDelete.map((o) => o.id) } } });
+    }
+    if (toAdd.length) {
+      await prisma.pollOption.createMany({
+        data: toAdd.map((d) => ({ eventId, startsAt: d })),
+      });
+    }
   }
 
-  await prisma.event.update({ where: { id: eventId }, data });
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { title: title.slice(0, 80), emoji, flexMinutes, editedAt: new Date() },
+  });
   await syncEventStatus(eventId);
   revalidatePath(`/e/${event.inviteToken}`);
   redirect(`/e/${event.inviteToken}`);
