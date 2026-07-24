@@ -39,12 +39,12 @@ export function RsvpPanel({
 
       <div className="flex flex-col gap-1.5">
         <span className="label">{t("illComeIf")}</span>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="strip">
           {[0, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
-              className="chip"
+              className="chip strip-pill"
               data-on={min === n}
               onClick={() => pickMin(n)}
             >
