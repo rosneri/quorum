@@ -1,65 +1,137 @@
-import Image from "next/image";
+import Link from "next/link";
+import { getUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { onboard } from "@/lib/actions";
+import { resolveQuorum } from "@/lib/quorum";
+import { QuorumMeter } from "@/components/QuorumMeter";
+import { StatusChip } from "@/components/StatusChip";
+import { When } from "@/components/When";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const user = await getUser();
+
+  if (!user) {
+    return (
+      <main className="flex min-h-[70dvh] flex-col justify-center gap-8">
+        <div>
+          <h1 className="text-5xl font-extrabold tracking-tight">Quorum</h1>
+          <p className="mt-3 text-lg" style={{ color: "var(--color-ink-2)" }}>
+            Coffee in an hour? The plan happens only when enough friends are in.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        <form action={onboard} className="card flex flex-col gap-4 p-5">
+          <div className="flex flex-col gap-1.5">
+            <label className="label" htmlFor="name">What should friends call you?</label>
+            <input
+              id="name"
+              name="name"
+              required
+              maxLength={40}
+              placeholder="Your name"
+              className="field text-lg"
+              autoComplete="given-name"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          </div>
+          <button className="btn text-lg">Let&apos;s go</button>
+          <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+            No password, no email. Your name lives on this device.
+          </p>
+        </form>
       </main>
-    </div>
+    );
+  }
+
+  const [events, groups] = await Promise.all([
+    prisma.event.findMany({
+      where: {
+        status: { in: ["PROPOSED", "CONFIRMED"] },
+        OR: [
+          { rsvps: { some: { userId: user.id } } },
+          { group: { memberships: { some: { userId: user.id } } } },
+        ],
+      },
+      include: { rsvps: true, group: true },
+      orderBy: [{ startsAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
+      take: 30,
+    }),
+    prisma.group.findMany({
+      where: { memberships: { some: { userId: user.id } } },
+      include: { _count: { select: { memberships: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  return (
+    <main className="flex flex-col gap-8">
+      <AutoRefresh seconds={20} />
+      <header className="flex items-center justify-between">
+        <h1 className="text-3xl font-extrabold tracking-tight">Quorum</h1>
+        <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>
+          Hi, {user.name}
+        </span>
+      </header>
+
+      <Link href="/new" className="btn text-lg">
+        + New plan
+      </Link>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="label">Plans</h2>
+        {events.length === 0 && (
+          <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+            Nothing brewing yet. Make a plan and share the link.
+          </p>
+        )}
+        {events.map((e) => {
+          const q = resolveQuorum(e.rsvps, e.minQuorum);
+          return (
+            <Link key={e.id} href={`/e/${e.inviteToken}`} className="card flex flex-col gap-2.5 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-lg font-bold">
+                  {e.emoji ? `${e.emoji} ` : ""}{e.title}
+                </span>
+                <StatusChip status={e.status} isPoll={e.isPoll} />
+              </div>
+              <div className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+                {e.isPoll ? (
+                  "Time is up for a vote"
+                ) : e.startsAt ? (
+                  <When iso={e.startsAt.toISOString()} flexMinutes={e.flexMinutes} />
+                ) : null}
+                {e.group ? ` · ${e.group.name}` : ""}
+              </div>
+              {!e.isPoll && (
+                <QuorumMeter attending={q.attending.length} minQuorum={e.minQuorum} confirmed={q.confirmed} />
+              )}
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="label">Groups</h2>
+          <Link href="/g/new" className="text-sm font-bold" style={{ color: "var(--color-accent-2)" }}>
+            + New group
+          </Link>
+        </div>
+        {groups.length === 0 && (
+          <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+            Groups keep your regulars one tap away.
+          </p>
+        )}
+        {groups.map((g) => (
+          <Link key={g.id} href={`/g/${g.id}`} className="card flex items-center justify-between p-4">
+            <span className="font-bold">{g.name}</span>
+            <span className="text-sm" style={{ color: "var(--color-ink-2)" }}>
+              {g._count.memberships} {g._count.memberships === 1 ? "member" : "members"}
+            </span>
+          </Link>
+        ))}
+      </section>
+    </main>
   );
 }

@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  events      Event[]
+  rsvps       Rsvp[]
+  pollVotes   PollVote[]
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  inviteToken String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+
+  memberships Membership[]
+  events      Event[]
+}
+
+model Membership {
+  userId   String
+  groupId  String
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
+
+enum EventStatus {
+  PROPOSED
+  CONFIRMED
+  CANCELLED
+  DONE
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  groupId     String?
+  creatorId   String
+  title       String
+  emoji       String?
+  startsAt    DateTime?
+  flexMinutes Int?
+  minQuorum   Int         @default(2)
+  status      EventStatus @default(PROPOSED)
+  inviteToken String      @unique @default(cuid())
+  isPoll      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  group       Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  rsvps       Rsvp[]
+  pollOptions PollOption[]
+}
+
+enum RsvpState {
+  IN
+  OUT
+}
+
+model Rsvp {
+  eventId     String
+  userId      String
+  state       RsvpState
+  personalMin Int       @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model PollOption {
+  id       String   @id @default(cuid())
+  eventId  String
+  startsAt DateTime
+
+  event Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+}
+
+model PollVote {
+  optionId String
+  userId   String
+
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([optionId, userId])
+}
