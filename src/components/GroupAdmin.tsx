@@ -1,8 +1,28 @@
 "use client";
 
-import { renameGroup, closeGroup, kickMember } from "@/lib/actions";
+import { renameGroup, closeGroup, kickMember, leaveGroup } from "@/lib/actions";
 import { useI18n } from "./I18nProvider";
 import { SubmitButton } from "./SubmitButton";
+
+export function LeaveGroupButton({ groupId }: { groupId: string }) {
+  const { t } = useI18n();
+  return (
+    <form
+      action={leaveGroup}
+      onSubmit={(e) => {
+        if (!confirm(t("confirmLeaveGroup"))) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="groupId" value={groupId} />
+      <SubmitButton
+        className="flex items-center gap-1.5 text-sm font-semibold"
+        style={{ color: "var(--color-accent-3)" }}
+      >
+        {t("leaveGroup")}
+      </SubmitButton>
+    </form>
+  );
+}
 
 export function GroupAdmin({ groupId, name }: { groupId: string; name: string }) {
   const { t } = useI18n();

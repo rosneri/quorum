@@ -11,9 +11,14 @@ const styles = {
   POLL: { bg: "var(--color-accent-2)", key: "stVoting" },
 } as const;
 
-export function StatusChip({ status, isPoll }: { status: EventStatus; isPoll?: boolean }) {
+export function StatusChip({ status, isPoll, isPast }: { status: EventStatus; isPoll?: boolean; isPast?: boolean }) {
   const { t } = useI18n();
-  const s = isPoll && status === "PROPOSED" ? styles.POLL : styles[status];
+  const s =
+    isPast && status !== "CANCELLED"
+      ? styles.DONE
+      : isPoll && status === "PROPOSED"
+        ? styles.POLL
+        : styles[status];
   return (
     <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: s.bg }}>
       {t(s.key)}

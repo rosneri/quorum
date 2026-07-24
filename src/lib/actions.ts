@@ -297,12 +297,79 @@ export async function removeAvailability(formData: FormData) {
   revalidatePath(`/e/${entry.event.inviteToken}`);
 }
 
+export async function editEvent(formData: FormData) {
+  const userId = await getUserId();
+  if (!userId) return;
+  const eventId = String(formData.get("eventId") ?? "");
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event || event.creatorId !== userId || event.status === "CANCELLED") return;
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return;
+  const emoji = String(formData.get("emoji") ?? "").trim() || null;
+
+  const data: {
+    title: string;
+    emoji: string | null;
+    editedAt: Date;
+    startsAt?: Date;
+    flexMinutes?: number | null;
+  } = { title: title.slice(0, 80), emoji, editedAt: new Date() };
+
+  // Poll events aren't time-editable until a time is locked in.
+  if (!event.isPoll) {
+    const d = new Date(String(formData.get("startsAt") ?? ""));
+    // same 15-min grace as createEvent
+    if (isNaN(d.getTime()) || d.getTime() < Date.now() - 15 * 60_000) return;
+    data.startsAt = d;
+    const flex = Number(formData.get("flexMinutes") ?? 0);
+    data.flexMinutes = flex > 0 ? Math.min(240, flex) : null;
+  }
+
+  await prisma.event.update({ where: { id: eventId }, data });
+  await syncEventStatus(eventId);
+  revalidatePath(`/e/${event.inviteToken}`);
+  redirect(`/e/${event.inviteToken}`);
+}
+
+export async function leaveGroup(formData: FormData) {
+  const groupId = String(formData.get("groupId") ?? "");
+  const userId = await getUserId();
+  if (!userId) return;
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: { memberships: { orderBy: { joinedAt: "asc" } } },
+  });
+  if (!group) return;
+  if (!group.memberships.some((m) => m.userId === userId)) return;
+
+  await prisma.membership.deleteMany({ where: { groupId, userId } });
+
+  // Admin leaving: hand the group to the earliest remaining member, or delete
+  // it if nobody's left (mirrors the event organizer-handoff in rsvp).
+  if (group.adminId === userId) {
+    const successor = group.memberships.find((m) => m.userId !== userId);
+    if (successor) {
+      await prisma.group.update({ where: { id: groupId }, data: { adminId: successor.userId } });
+    } else {
+      await prisma.group.delete({ where: { id: groupId } });
+    }
+  }
+  redirect("/");
+}
+
 export async function reopenEvent(formData: FormData) {
   const eventId = String(formData.get("eventId") ?? "");
   const userId = await getUserId();
   if (!userId) return;
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event || event.status !== "CANCELLED") return;
+  // Only past participants (people who ever RSVP'd) can reopen — not any
+  // link-holder who happens to open the cancelled plan.
+  const priorRsvp = await prisma.rsvp.findUnique({
+    where: { eventId_userId: { eventId, userId } },
+  });
+  if (!priorRsvp) return;
   await prisma.event.update({ where: { id: eventId }, data: { status: "PROPOSED" } });
   // the reopener is in — otherwise the plan reopens empty and dies again
   await prisma.rsvp.upsert({

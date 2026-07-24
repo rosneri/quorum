@@ -9,6 +9,7 @@ import { When } from "@/components/When";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
+import { PAST_GRACE_MS } from "@/lib/status";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +53,12 @@ export default async function Home() {
     prisma.event.findMany({
       where: {
         status: { in: ["PROPOSED", "CONFIRMED"] },
-        // polls have no time yet; timed events drop off 3h after they start
-        OR: [{ startsAt: null }, { startsAt: { gte: new Date(Date.now() - 3 * 3_600_000) } }],
+        // timed events drop off a few hours after they start; polls have no
+        // time yet, so age them out ~7 days after creation
+        OR: [
+          { startsAt: { gte: new Date(Date.now() - PAST_GRACE_MS) } },
+          { AND: [{ startsAt: null }, { createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } }] },
+        ],
         AND: {
           OR: [
             { rsvps: { some: { userId: user.id } } },
