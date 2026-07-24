@@ -16,7 +16,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { RsvpPanel } from "@/components/RsvpPanel";
 import { NameField } from "@/components/NameField";
 import { SubmitButton } from "@/components/SubmitButton";
-import { reopenEvent, removeAvailability } from "@/lib/actions";
+import { reopenEvent, removeAvailability, confirmOption, removeOption } from "@/lib/actions";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { isPast, isLive } from "@/lib/status";
 import { getT } from "@/lib/i18n";
@@ -311,6 +311,25 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
                       {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
                     </span>
+                  )}
+                  {/* owner triage: confirm a guest suggestion or drop a time */}
+                  {isCreator && event.pollOptions.length > 1 && (
+                    <div className="flex gap-1.5">
+                      {o.suggested && (
+                        <form action={confirmOption}>
+                          <input type="hidden" name="optionId" value={o.id} />
+                          <SubmitButton className="chip text-xs" style={{ color: "var(--color-mint-deep)" }}>
+                            ✓ {t("confirmTime")}
+                          </SubmitButton>
+                        </form>
+                      )}
+                      <form action={removeOption}>
+                        <input type="hidden" name="optionId" value={o.id} />
+                        <SubmitButton className="chip text-xs" style={{ color: "var(--color-accent-3)" }}>
+                          ✕ {t("removeTime")}
+                        </SubmitButton>
+                      </form>
+                    </div>
                   )}
                 </div>
               );
