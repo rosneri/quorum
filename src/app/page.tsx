@@ -45,6 +45,13 @@ export default async function Home() {
             {t("noPassword")}
           </p>
         </form>
+        <Link
+          href="/account"
+          className="self-center text-sm font-bold"
+          style={{ color: "var(--color-accent-2)" }}
+        >
+          {t("haveAccountSignIn")}
+        </Link>
       </main>
     );
   }
@@ -82,9 +89,13 @@ export default async function Home() {
       <AutoRefresh seconds={20} />
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-extrabold tracking-tight">{t("appName")}</h1>
-        <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>
-          {t("hi", { name: user.name })}
-        </span>
+        <Link
+          href="/account"
+          className="text-sm font-semibold"
+          style={{ color: "var(--color-ink-2)" }}
+        >
+          {t("hi", { name: user.name })}{user.authId ? "" : ` · ${t("account")}`}
+        </Link>
         <LocaleToggle />
       </header>
 

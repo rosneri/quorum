@@ -20,6 +20,35 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Accounts (optional)
+
+Identity is anonymous by default (a signed `quorum_uid` cookie). Users can
+optionally link an email + password on `/account` to keep their name, plans
+and groups across devices; credentials are handled by
+[Supabase Auth](https://supabase.com/docs/guides/auth) — the app only stores
+the Supabase user id (`User.authId`) and email.
+
+Required environment variables (in addition to `DATABASE_URL` / `DIRECT_URL`
+and `AUTH_SECRET`):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
+```
+
+(`SUPABASE_URL` / `SUPABASE_ANON_KEY` work too; the client is only created
+server-side.)
+
+After pulling this change, apply the schema to the database:
+
+```bash
+npx prisma db push
+```
+
+Participant names on an event are revealed only when the organizer's privacy
+setting allows it **and** the viewer is signed in with an account; the
+organizer always sees them.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

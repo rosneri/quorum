@@ -77,6 +77,10 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   }
 
   const isCreator = user?.id === event.creatorId;
+  // Names are revealed only when the organizer allows it AND the viewer is
+  // signed in with an account (the organizer always sees them).
+  const signedIn = !!user?.authId;
+  const revealNames = isCreator || (event.publicVotes && signedIn);
   const past = isPast(event);
   const live = isLive(event);
   const wasEdited = !!event.editedAt && event.editedAt.getTime() > event.createdAt.getTime();
@@ -177,6 +181,18 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           {!event.publicVotes && (
             <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
           )}
+          {event.publicVotes && !revealNames && (
+            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+              {t("signInToSeeNames")}{" "}
+              <Link
+                href={`/account?next=/e/${event.inviteToken}`}
+                className="font-bold"
+                style={{ color: "var(--color-accent-2)" }}
+              >
+                {t("signInToSeeNamesCta")}
+              </Link>
+            </p>
+          )}
           {!user && (
             <form action={onboard} className="flex flex-col gap-3">
               <input type="hidden" name="redirectTo" value={`/e/${event.inviteToken}`} />
@@ -225,7 +241,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
                     }}
                   />
                 )}
-                {(event.publicVotes || isCreator) && o.votes.length > 0 && (
+                {revealNames && o.votes.length > 0 && (
                   <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
                     {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
                   </span>
@@ -233,7 +249,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
               </div>
             );
           })}
-          {event.availabilities.length > 0 && (event.publicVotes || isCreator) && (
+          {event.availabilities.length > 0 && revealNames && (
             <div className="mt-1 flex flex-col gap-1 border-t pt-3" style={{ borderColor: "var(--color-paper-3)" }}>
               <span className="label">{t("freeWhen")}</span>
               {event.availabilities.map((a) => (
@@ -283,10 +299,25 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
         </div>
       )}
 
-      {!event.isPoll && event.rsvps.length > 0 && !(event.publicVotes || isCreator) && (
-        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whosInPrivate")}</p>
+      {!event.isPoll && event.rsvps.length > 0 && !revealNames && (
+        <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
+          {event.publicVotes ? (
+            <>
+              {t("signInToSeeNames")}{" "}
+              <Link
+                href={`/account?next=/e/${event.inviteToken}`}
+                className="font-bold"
+                style={{ color: "var(--color-accent-2)" }}
+              >
+                {t("signInToSeeNamesCta")}
+              </Link>
+            </>
+          ) : (
+            t("whosInPrivate")
+          )}
+        </p>
       )}
-      {!event.isPoll && event.rsvps.length > 0 && (event.publicVotes || isCreator) && (
+      {!event.isPoll && event.rsvps.length > 0 && revealNames && (
         <section className="flex flex-col gap-2">
           <h2 className="label">{t("whosIn")}</h2>
           <div className="flex flex-col gap-1.5">
