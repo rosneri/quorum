@@ -18,11 +18,41 @@ const rubik = Rubik({
   weight: ["400", "500", "600", "700"],
 });
 
+const DESCRIPTION = "Spontaneous plans that only happen when enough friends are in. Share a link, everyone says if they're in, and the plan confirms itself once it hits quorum.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://quorumeet.vercel.app"),
-  title: "Quorum",
-  description: "Spontaneous plans that only happen when enough friends are in.",
+  title: {
+    default: "Quorum — plans that happen when enough friends are in",
+    template: "%s · Quorum",
+  },
+  description: DESCRIPTION,
+  applicationName: "Quorum",
+  keywords: [
+    "group plans",
+    "RSVP",
+    "meetup scheduling",
+    "quorum",
+    "when enough people are in",
+    "hangout planner",
+    "friends",
+    "no app needed",
+  ],
+  authors: [{ name: "Quorum" }],
   manifest: "/manifest.webmanifest",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Quorum",
+    title: "Quorum — plans that happen when enough friends are in",
+    description: DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Quorum — plans that happen when enough friends are in",
+    description: DESCRIPTION,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

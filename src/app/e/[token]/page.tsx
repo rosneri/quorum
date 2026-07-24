@@ -20,8 +20,48 @@ import { reopenEvent, removeAvailability } from "@/lib/actions";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { isPast, isLive } from "@/lib/status";
 import { getT } from "@/lib/i18n";
+import { formatWhen } from "@/lib/format";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: PageProps<"/e/[token]">): Promise<Metadata> {
+  const { t, locale, dict } = await getT();
+  const { token } = await params;
+  const event = await prisma.event.findUnique({
+    where: { inviteToken: token },
+    include: { creator: true, group: true },
+  });
+  if (!event) return { title: t("planMissing") };
+
+  const title = `${event.emoji ? `${event.emoji} ` : ""}${event.title}`;
+  const when = event.startsAt
+    ? formatWhen(event.startsAt, event.flexMinutes, locale, dict)
+    : t("voteOnTimeBelow");
+  const bits = [when];
+  if (event.group) bits.push(event.group.name);
+  bits.push(t("by", { name: event.creator.name }));
+  const description = bits.join(" · ");
+
+  return {
+    title,
+    description,
+    // invite links are private — visible to anyone who has the link, but never
+    // surfaced in search
+    robots: { index: false, follow: false },
+    openGraph: {
+      type: "website",
+      title: `${title} · Quorum`,
+      description,
+      url: `/e/${event.inviteToken}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} · Quorum`,
+      description,
+    },
+  };
+}
 
 export default async function EventPage({ params }: PageProps<"/e/[token]">) {
   const { t, locale } = await getT();

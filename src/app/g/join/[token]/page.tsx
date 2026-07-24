@@ -6,8 +6,31 @@ import { NameField } from "@/components/NameField";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { getT } from "@/lib/i18n";
 import { SubmitButton } from "@/components/SubmitButton";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: PageProps<"/g/join/[token]">): Promise<Metadata> {
+  const { t } = await getT();
+  const { token } = await params;
+  const group = await prisma.group.findUnique({
+    where: { inviteToken: token },
+    include: { _count: { select: { memberships: true } } },
+  });
+  if (!group) return { title: t("planMissing") };
+
+  const title = t("joinTitle", { name: group.name });
+  const n = group._count.memberships;
+  const description = `${n} ${n === 1 ? t("member") : t("members")} ${t("soFar")}`;
+
+  return {
+    title,
+    description,
+    robots: { index: false, follow: false },
+    openGraph: { type: "website", title: `${title} · Quorum`, description, url: `/g/join/${token}` },
+    twitter: { card: "summary_large_image", title: `${title} · Quorum`, description },
+  };
+}
 
 export default async function JoinGroup({ params }: PageProps<"/g/join/[token]">) {
   const { t } = await getT();
