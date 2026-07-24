@@ -131,6 +131,13 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
 
   const nameById = new Map(event.availabilities.map((a) => [a.userId, a.user.name]));
   const topVotes = Math.max(0, ...event.pollOptions.map((p) => p.votes.length));
+  // Only crown a front-runner when one time is genuinely ahead — otherwise a
+  // tie would put a trophy on every option, which reads as "all are winners".
+  const leaderVotes =
+    event.pollOptions.find((p) => p.id === res.leaderOptionId)?.votes.length ?? 0;
+  const clearLeader =
+    leaderVotes > 0 &&
+    event.pollOptions.every((p) => p.id === res.leaderOptionId || p.votes.length < leaderVotes);
   // Names are revealed only when the organizer allows it AND the viewer is
   // signed in with an account (the organizer always sees them).
   const signedIn = !!user?.authId;
@@ -260,6 +267,7 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
           <QuorumMeter attending={attendingCount} confirmed={res.confirmed} />
           <div className="flex flex-col gap-3">
             <span className="label">{t("whenWorks")}</span>
+            <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("whenWorksHint")}</p>
             {!event.publicVotes && (
               <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>{t("votesPrivate")}</p>
             )}
@@ -285,66 +293,78 @@ export default async function EventPage({ params }: PageProps<"/e/[token]">) {
             {event.pollOptions.map((o) => {
               const votedByMe = user ? o.votes.some((v) => v.userId === user.id) : false;
               const optRes = res.perOption.get(o.id);
-              const isLeader = o.id === res.leaderOptionId;
+              const isLeader = o.id === res.leaderOptionId && clearLeader;
               const freeHere = optRes?.free.length ?? 0;
-              const top = Math.max(1, ...event.pollOptions.map((p) => p.votes.length));
+              const share = topVotes > 0 ? (o.votes.length / topVotes) * 100 : 0;
               return (
                 <div key={o.id} className="flex flex-col gap-1">
-                  <form action={vote}>
-                    <input type="hidden" name="optionId" value={o.id} />
-                    <SubmitButton
-                      className="chip w-full items-center justify-between text-left"
-                      data-on={votedByMe}
-                      data-leader={isLeader || undefined}
-                      disabled={!user}
-                      style={{ display: "flex", opacity: user ? 1 : 0.6 }}
-                    >
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        {isLeader && <span aria-hidden>🏆</span>}
-                        {o.suggested && <span title={t("suggestedTime")}>❓</span>}
-                        <When iso={o.startsAt.toISOString()} />
-                      </span>
-                      <span className="font-bold">
-                        {o.votes.length} ✋
-                        {freeHere > 0 && (
-                          <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere })}</span>
+                  <div className="flex items-center gap-1.5">
+                    <form action={vote} className="min-w-0 flex-1">
+                      <input type="hidden" name="optionId" value={o.id} />
+                      <SubmitButton
+                        className="chip w-full items-center justify-between text-left"
+                        data-on={votedByMe}
+                        data-leader={isLeader || undefined}
+                        disabled={!user}
+                        style={{ display: "flex", opacity: user ? 1 : 0.6 }}
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          {isLeader && <span aria-hidden title={t("leadingTime")}>🏆</span>}
+                          {o.suggested && <span title={t("suggestedTime")}>❓</span>}
+                          <When iso={o.startsAt.toISOString()} />
+                        </span>
+                        <span className="font-bold">
+                          {o.votes.length} ✋
+                          {freeHere > 0 && (
+                            <span style={{ color: "var(--color-mint-deep)" }}> · {t("nFree", { n: freeHere })}</span>
+                          )}
+                        </span>
+                      </SubmitButton>
+                    </form>
+                    {/* owner triage sits on the row: confirm a suggestion or drop a time */}
+                    {isCreator && event.pollOptions.length > 1 && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        {o.suggested && (
+                          <form action={confirmOption}>
+                            <input type="hidden" name="optionId" value={o.id} />
+                            <SubmitButton
+                              aria-label={t("confirmTime")}
+                              title={t("confirmTime")}
+                              className="chip px-2.5 font-bold"
+                              style={{ color: "var(--color-mint-deep)" }}
+                            >
+                              ✓
+                            </SubmitButton>
+                          </form>
                         )}
-                      </span>
-                    </SubmitButton>
-                  </form>
+                        <form action={removeOption}>
+                          <input type="hidden" name="optionId" value={o.id} />
+                          <SubmitButton
+                            aria-label={t("removeTime")}
+                            title={t("removeTime")}
+                            className="chip px-2.5 font-bold"
+                            style={{ color: "var(--color-accent-3)" }}
+                          >
+                            ✕
+                          </SubmitButton>
+                        </form>
+                      </div>
+                    )}
+                  </div>
                   {o.votes.length > 0 && (
                     <div
                       className="h-1.5 rounded-full"
                       style={{
                         background: isLeader ? "var(--color-mint)" : "var(--color-accent-2)",
-                        width: `${(o.votes.length / top) * 100}%`,
+                        width: `${share}%`,
                         transition: "width 220ms var(--ease-out)",
                       }}
                     />
                   )}
                   {showList && o.votes.length > 0 && (
                     <span className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                      {topVotes === o.votes.length ? "🏆 " : ""}{o.votes.map((v) => v.user.name).join(", ")}
+                      {o.votes.map((v) => v.user.name).join(", ")}
                     </span>
-                  )}
-                  {/* owner triage: confirm a guest suggestion or drop a time */}
-                  {isCreator && event.pollOptions.length > 1 && (
-                    <div className="flex gap-1.5">
-                      {o.suggested && (
-                        <form action={confirmOption}>
-                          <input type="hidden" name="optionId" value={o.id} />
-                          <SubmitButton className="chip text-xs" style={{ color: "var(--color-mint-deep)" }}>
-                            ✓ {t("confirmTime")}
-                          </SubmitButton>
-                        </form>
-                      )}
-                      <form action={removeOption}>
-                        <input type="hidden" name="optionId" value={o.id} />
-                        <SubmitButton className="chip text-xs" style={{ color: "var(--color-accent-3)" }}>
-                          ✕ {t("removeTime")}
-                        </SubmitButton>
-                      </form>
-                    </div>
                   )}
                 </div>
               );

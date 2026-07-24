@@ -153,6 +153,10 @@ a.card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2p
   background: var(--color-accent);
   border-color: var(--color-accent-deep);
 }
+/* the current front-runner among poll times — a quiet mint outline */
+.chip[data-leader="true"] {
+  border-color: var(--color-mint-deep);
+}
 
 /* ---- Icon buttons (calendar links) ---- */
 .cal-icon {
