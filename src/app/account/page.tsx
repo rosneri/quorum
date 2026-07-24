@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import { signIn, signUp, signOut } from "@/lib/account";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { SubmitButton } from "@/components/SubmitButton";
+import { AuthForm } from "@/components/AuthForm";
 import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -59,98 +60,39 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
         </div>
       ) : (
         <>
-          <section className="card flex flex-col gap-4 p-5">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-bold">{t("createAccount")}</h2>
-              <p className="text-sm" style={{ color: "var(--color-ink-2)" }}>
-                {t("accountPitch")}
-              </p>
-            </div>
-            <form action={signUp} className="flex flex-col gap-3">
-              <input type="hidden" name="next" value={next} />
-              {!user && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="label" htmlFor="su-name">{t("yourName")}</label>
-                  <input
-                    id="su-name"
-                    name="name"
-                    required
-                    maxLength={40}
-                    placeholder={t("namePlaceholder")}
-                    className="field"
-                    autoComplete="given-name"
-                  />
-                </div>
-              )}
-              <div className="flex flex-col gap-1.5">
-                <label className="label" htmlFor="su-email">{t("email")}</label>
-                <input
-                  id="su-email"
-                  name="email"
-                  type="email"
-                  required
-                  className="field"
-                  autoComplete="email"
-                  dir="ltr"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="label" htmlFor="su-password">{t("password")}</label>
-                <input
-                  id="su-password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  placeholder={t("passwordHint")}
-                  className="field"
-                  autoComplete="new-password"
-                  dir="ltr"
-                />
-              </div>
-              <SubmitButton className="btn">{t("createAccount")}</SubmitButton>
-              <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                {t("accountOptional")}
-              </p>
-            </form>
-          </section>
-
-          <section className="card flex flex-col gap-4 p-5">
-            <h2 className="text-lg font-bold">{t("signInTitle")}</h2>
-            <form action={signIn} className="flex flex-col gap-3">
-              <input type="hidden" name="next" value={next} />
-              <div className="flex flex-col gap-1.5">
-                <label className="label" htmlFor="si-email">{t("email")}</label>
-                <input
-                  id="si-email"
-                  name="email"
-                  type="email"
-                  required
-                  className="field"
-                  autoComplete="email"
-                  dir="ltr"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="label" htmlFor="si-password">{t("password")}</label>
-                <input
-                  id="si-password"
-                  name="password"
-                  type="password"
-                  required
-                  className="field"
-                  autoComplete="current-password"
-                  dir="ltr"
-                />
-              </div>
-              <SubmitButton className="btn btn-quiet">{t("signInAction")}</SubmitButton>
-              {user && (
-                <p className="text-xs" style={{ color: "var(--color-ink-2)" }}>
-                  {t("switchDeviceHint")}
-                </p>
-              )}
-            </form>
-          </section>
+          <AuthForm
+            signIn={signIn}
+            signUp={signUp}
+            hasUser={!!user}
+            next={next}
+            labels={{
+              createAccount: t("createAccount"),
+              signInAction: t("signInAction"),
+              yourName: t("yourName"),
+              namePlaceholder: t("namePlaceholder"),
+              email: t("email"),
+              password: t("password"),
+              passwordHint: t("passwordHint"),
+              accountPitch: t("accountPitch"),
+              accountOptional: t("accountOptional"),
+              switchToSignUp: t("switchToSignUp"),
+              switchToSignIn: t("switchToSignIn"),
+            }}
+          />
+          {!user && (
+            <Link
+              href="/"
+              className="self-center text-sm font-bold"
+              style={{ color: "var(--color-ink-2)" }}
+            >
+              {t("continueAsGuest")}
+            </Link>
+          )}
+          {user && (
+            <p className="text-center text-xs" style={{ color: "var(--color-ink-2)" }}>
+              {t("switchDeviceHint")}
+            </p>
+          )}
         </>
       )}
     </main>
