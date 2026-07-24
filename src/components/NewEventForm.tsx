@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createEvent } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
+import { DateTimeField } from "./DateTimeField";
 
 const EMOJI = ["☕", "🍕", "🏀", "🎬", "🎲", "🍻", "🥾", "🎮"];
 
@@ -104,14 +105,7 @@ export function NewEventForm({
               </button>
             ))}
           </div>
-          <input
-            type="datetime-local"
-            value={when}
-            min={toLocalInputValue(new Date())}
-            onChange={(e) => setWhen(e.target.value)}
-            required
-            className="field"
-          />
+          <DateTimeField value={when} onChange={setWhen} disallowPast />
           {/* send UTC — the server may run in a different timezone */}
           <input type="hidden" name="startsAt" value={when ? new Date(when).toISOString() : ""} />
           <div className="flex flex-col gap-1.5">
@@ -135,16 +129,13 @@ export function NewEventForm({
         <div className="flex flex-col gap-2">
           {options.map((o, i) => (
             <div key={i} className="flex gap-2">
-              <input
-                type="datetime-local"
-                value={o}
-                min={toLocalInputValue(new Date())}
-                onChange={(e) =>
-                  setOptions(options.map((x, j) => (j === i ? e.target.value : x)))
-                }
-                required
-                className="field"
-              />
+              <div className="flex-1">
+                <DateTimeField
+                  value={o}
+                  onChange={(v) => setOptions(options.map((x, j) => (j === i ? v : x)))}
+                  disallowPast
+                />
+              </div>
               <input type="hidden" name="option" value={o ? new Date(o).toISOString() : ""} />
               {options.length > 2 && (
                 <button

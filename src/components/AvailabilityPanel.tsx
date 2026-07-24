@@ -4,6 +4,7 @@ import { useState } from "react";
 import { setAvailability } from "@/lib/actions";
 import { NameField } from "./NameField";
 import { useI18n } from "./I18nProvider";
+import { DateTimeField } from "./DateTimeField";
 
 function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -51,25 +52,11 @@ export function AvailabilityPanel({
         </button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="datetime-local"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          required
-          className="field flex-1"
-          style={{ minWidth: "12rem" }}
-        />
+        <div className="w-full"><DateTimeField value={from} onChange={setFrom} /></div>
         {range && (
           <>
             <span className="text-sm font-semibold" style={{ color: "var(--color-ink-2)" }}>{t("to")}</span>
-            <input
-              type="datetime-local"
-              value={until}
-              onChange={(e) => setUntil(e.target.value)}
-              required
-              className="field flex-1"
-              style={{ minWidth: "12rem" }}
-            />
+            <div className="w-full"><DateTimeField value={until} onChange={setUntil} /></div>
           </>
         )}
       </div>
