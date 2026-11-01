@@ -1,65 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# quorum
 
-## Getting Started
+Plans that happen when enough friends are in.
 
-First, run the development server:
+Make a plan, share a link, and see who's in. Friends answer yes, maybe, or no, and a maybe or a no can become "I'll come if at least N others do".
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Live:** [quorumeet.vercel.app](https://quorumeet.vercel.app)
+
+## Features
+
+- **Groups and one-off plans.** Create a group and invite people with a link, or share a single plan.
+- **Conditional RSVPs.** After a maybe or a decline, "I'll come if at least…" lets people commit once enough others do.
+- **Time polls.** The owner proposes times. Anyone can suggest another time; a guest's suggestion is marked with a "?" until the owner confirms it. Saying a time doesn't work for you suggests a new one and turns it into a vote.
+- **Guests welcome.** Join without an account, or sign up with email and password.
+- **Share cards.** Generated Open Graph images for every plan, including correct right-to-left Hebrew.
+- **Hebrew and English**, with a `?lang=` switch for testing.
+
+## Stack
+
+Next.js (App Router), React, TypeScript, Prisma on Postgres, and Supabase Auth. Deployed on Vercel.
+
+Data model: `User`, `Group`, `Membership`, `Event`, `Rsvp`, `Availability`, `PollOption`, `PollVote`.
+
+## Running locally
+
+Create `.env` with:
+
+```
+DATABASE_URL=        # Postgres (pooled)
+DIRECT_URL=          # Postgres (direct, for migrations)
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+AUTH_SECRET=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Accounts (optional)
-
-Identity is anonymous by default (a signed `quorum_uid` cookie). Users can
-optionally link an email + password on `/account` to keep their name, plans
-and groups across devices; credentials are handled by
-[Supabase Auth](https://supabase.com/docs/guides/auth) — the app only stores
-the Supabase user id (`User.authId`) and email.
-
-Required environment variables (in addition to `DATABASE_URL` / `DIRECT_URL`
-and `AUTH_SECRET`):
+Then:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
-```
-
-(`SUPABASE_URL` / `SUPABASE_ANON_KEY` work too; the client is only created
-server-side.)
-
-After pulling this change, apply the schema to the database:
-
-```bash
+npm install          # also runs prisma generate
 npx prisma db push
+npm run dev
 ```
-
-Participant names on an event are revealed only when the organizer's privacy
-setting allows it **and** the viewer is signed in with an account; the
-organizer always sees them.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
